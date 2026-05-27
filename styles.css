@@ -92,13 +92,11 @@ body.theme-cyan-night { --bg-card: #0a2535; --accent: #06b6d4; }
     flex: 1;
 }
 
-/* Calculator View */
 .calculator-view {
     display: block;
     flex: 1;
 }
 
-/* Steps View */
 .steps-view {
     flex: 1;
     display: flex;
@@ -184,7 +182,6 @@ body.theme-cyan-night { --bg-card: #0a2535; --accent: #06b6d4; }
     margin-right: 12px;
 }
 
-/* Display Area */
 .display-area {
     padding: 20px;
 }
@@ -228,7 +225,6 @@ body.theme-cyan-night { --bg-card: #0a2535; --accent: #06b6d4; }
     color: var(--accent);
 }
 
-/* Buttons */
 .buttons-panel {
     padding: 12px 16px 20px;
     background: rgba(0,0,0,0.2);
@@ -304,7 +300,6 @@ body.theme-cyan-night { --bg-card: #0a2535; --accent: #06b6d4; }
     border-color: var(--accent);
 }
 
-/* Drawer */
 .drawer {
     position: fixed;
     top: 0;
