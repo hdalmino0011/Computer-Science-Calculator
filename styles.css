@@ -44,13 +44,16 @@ body.theme-sand { --bg-card: #4a3a1a; --accent: #fbbf24; }
 body.theme-cyan-night { --bg-card: #0a2535; --accent: #06b6d4; }
 
 .app-container {
-    max-width: 700px;
+    max-width: 750px;
     width: 100%;
     background: var(--bg-card);
     border-radius: 28px;
     box-shadow: 0 20px 40px rgba(0,0,0,0.4);
     overflow: hidden;
     border: 1px solid var(--accent);
+    min-height: 600px;
+    display: flex;
+    flex-direction: column;
 }
 
 .top-bar {
@@ -89,6 +92,110 @@ body.theme-cyan-night { --bg-card: #0a2535; --accent: #06b6d4; }
     flex: 1;
 }
 
+/* Calculator View */
+.calculator-view {
+    display: block;
+    flex: 1;
+}
+
+/* Steps Full View */
+.steps-view {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-card);
+    min-height: 500px;
+}
+
+.steps-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    background: rgba(0,0,0,0.3);
+    border-bottom: 1px solid var(--accent);
+}
+
+.back-btn {
+    background: var(--accent);
+    border: none;
+    padding: 8px 16px;
+    border-radius: 30px;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 0.85rem;
+}
+
+.back-btn:hover {
+    background: var(--accent-hover);
+    transform: scale(0.98);
+}
+
+.steps-title {
+    font-size: 1rem;
+    font-weight: bold;
+    color: var(--accent);
+    letter-spacing: 1px;
+}
+
+.steps-expression {
+    background: var(--bg-display);
+    margin: 20px;
+    padding: 16px;
+    border-radius: 16px;
+    font-family: monospace;
+    font-size: 1.1rem;
+    border: 1px solid var(--border);
+    word-wrap: break-word;
+}
+
+.steps-result-full {
+    background: var(--bg-display);
+    margin: 0 20px 20px 20px;
+    padding: 16px;
+    border-radius: 16px;
+    font-size: 1.3rem;
+    font-weight: bold;
+    border-left: 4px solid var(--accent);
+}
+
+.steps-result-full .result-label {
+    font-size: 0.9rem;
+    opacity: 0.7;
+    margin-right: 10px;
+}
+
+.steps-result-full .result-value {
+    color: var(--accent);
+}
+
+.steps-list-full {
+    background: var(--steps-bg);
+    margin: 0 20px 20px 20px;
+    padding: 16px;
+    border-radius: 16px;
+    border: 1px solid var(--border);
+    flex: 1;
+    overflow-y: auto;
+    max-height: 400px;
+}
+
+.step-item {
+    font-family: monospace;
+    font-size: 0.9rem;
+    padding: 8px;
+    margin-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-secondary);
+}
+
+.step-number {
+    color: var(--accent);
+    font-weight: bold;
+    margin-right: 12px;
+}
+
 .display-area {
     padding: 20px;
 }
@@ -104,7 +211,7 @@ body.theme-cyan-night { --bg-card: #0a2535; --accent: #06b6d4; }
     width: 100%;
     background: transparent;
     border: none;
-    font-size: 1.2rem;
+    font-size: 1.1rem;
     padding: 12px 16px;
     border-radius: 16px;
     color: var(--text-primary);
@@ -116,9 +223,8 @@ body.theme-cyan-night { --bg-card: #0a2535; --accent: #06b6d4; }
     background: var(--bg-display);
     border-radius: 16px;
     padding: 8px 16px;
-    margin-bottom: 12px;
     text-align: right;
-    font-size: 1.4rem;
+    font-size: 1.3rem;
     font-weight: bold;
     font-family: monospace;
 }
@@ -131,23 +237,6 @@ body.theme-cyan-night { --bg-card: #0a2535; --accent: #06b6d4; }
 
 #resultDisplay {
     color: var(--accent);
-}
-
-.steps-box {
-    background: var(--steps-bg);
-    border-radius: 16px;
-    padding: 10px;
-    max-height: 140px;
-    overflow-y: auto;
-    border: 1px solid var(--border);
-    font-family: monospace;
-    font-size: 0.75rem;
-}
-
-.steps-label {
-    font-size: 0.7rem;
-    opacity: 0.6;
-    margin-bottom: 5px;
 }
 
 .buttons-panel {
@@ -226,6 +315,7 @@ body.theme-cyan-night { --bg-card: #0a2535; --accent: #06b6d4; }
     border-color: var(--accent);
 }
 
+/* Drawer */
 .drawer {
     position: fixed;
     top: 0;
@@ -403,5 +493,11 @@ body.theme-cyan-night { --bg-card: #0a2535; --accent: #06b6d4; }
     .branch-btn {
         font-size: 0.6rem;
         padding: 4px 8px;
+    }
+    .steps-expression {
+        font-size: 0.85rem;
+    }
+    .step-item {
+        font-size: 0.75rem;
     }
 }
