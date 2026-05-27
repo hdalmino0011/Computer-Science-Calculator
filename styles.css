@@ -92,13 +92,11 @@ body.theme-cyan-night { --bg-card: #0a2535; --accent: #06b6d4; }
     flex: 1;
 }
 
-/* Calculator View */
 .calculator-view {
     display: block;
     flex: 1;
 }
 
-/* Steps Full View */
 .steps-view {
     flex: 1;
     display: flex;
@@ -244,30 +242,6 @@ body.theme-cyan-night { --bg-card: #0a2535; --accent: #06b6d4; }
     background: rgba(0,0,0,0.2);
 }
 
-.branch-holder {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-bottom: 16px;
-    justify-content: center;
-}
-
-.branch-btn {
-    background: var(--btn-bg);
-    border: 1px solid var(--border);
-    padding: 6px 12px;
-    border-radius: 30px;
-    font-size: 0.7rem;
-    font-weight: 600;
-    color: var(--text-primary);
-    cursor: pointer;
-}
-
-.branch-btn.active, .branch-btn:hover {
-    background: var(--accent);
-    border-color: var(--accent);
-}
-
 .button-grid {
     display: grid;
     grid-template-columns: repeat(6, 1fr);
@@ -280,7 +254,7 @@ body.theme-cyan-night { --bg-card: #0a2535; --accent: #06b6d4; }
     border: 1px solid var(--border);
     border-radius: 12px;
     padding: 12px 0;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     font-weight: 600;
     color: var(--text-primary);
     cursor: pointer;
@@ -295,7 +269,7 @@ body.theme-cyan-night { --bg-card: #0a2535; --accent: #06b6d4; }
 
 .action-buttons {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     gap: 10px;
 }
 
@@ -319,8 +293,8 @@ body.theme-cyan-night { --bg-card: #0a2535; --accent: #06b6d4; }
 .drawer {
     position: fixed;
     top: 0;
-    left: -300px;
-    width: 280px;
+    left: -320px;
+    width: 300px;
     height: 100%;
     background: var(--bg-card);
     border-right: 2px solid var(--accent);
@@ -344,10 +318,34 @@ body.theme-cyan-night { --bg-card: #0a2535; --accent: #06b6d4; }
 }
 
 .drawer-section-title {
-    font-size: 0.7rem;
+    font-size: 0.75rem;
     color: var(--accent);
     margin-bottom: 8px;
     letter-spacing: 1px;
+    font-weight: bold;
+}
+
+.branch-selector {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.branch-drawer-btn {
+    background: var(--btn-bg);
+    border: 1px solid var(--border);
+    border-radius: 30px;
+    padding: 8px;
+    text-align: center;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    color: var(--text-primary);
+}
+
+.branch-drawer-btn.active, .branch-drawer-btn:hover {
+    background: var(--accent);
+    border-color: var(--accent);
 }
 
 .themes-gallery {
@@ -471,17 +469,6 @@ body.theme-cyan-night { --bg-card: #0a2535; --accent: #06b6d4; }
     margin-top: 4px;
 }
 
-.clear-history-btn {
-    width: 100%;
-    background: #ef4444;
-    border: none;
-    border-radius: 30px;
-    padding: 8px;
-    color: white;
-    font-weight: bold;
-    cursor: pointer;
-}
-
 @media (max-width: 550px) {
     .button-grid {
         gap: 5px;
@@ -490,14 +477,14 @@ body.theme-cyan-night { --bg-card: #0a2535; --accent: #06b6d4; }
         font-size: 0.7rem;
         padding: 8px 0;
     }
-    .branch-btn {
-        font-size: 0.6rem;
-        padding: 4px 8px;
-    }
     .steps-expression {
         font-size: 0.85rem;
     }
     .step-item {
         font-size: 0.75rem;
+    }
+    .drawer {
+        width: 85%;
+        left: -85%;
     }
 }
