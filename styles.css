@@ -29,6 +29,7 @@ body {
     padding: 16px;
 }
 
+/* 12 Themes - applied via body class */
 body.theme-default { --bg-card: #1a1a2e; --accent: #7c3aed; }
 body.theme-obsidian { --bg-card: #2d2d2d; --accent: #a855f7; }
 body.theme-royalblue { --bg-card: #0f2a4a; --accent: #3b82f6; }
@@ -91,11 +92,13 @@ body.theme-cyan-night { --bg-card: #0a2535; --accent: #06b6d4; }
     flex: 1;
 }
 
+/* Calculator View */
 .calculator-view {
     display: block;
     flex: 1;
 }
 
+/* Steps Full View */
 .steps-view {
     flex: 1;
     display: flex;
@@ -181,6 +184,7 @@ body.theme-cyan-night { --bg-card: #0a2535; --accent: #06b6d4; }
     margin-right: 12px;
 }
 
+/* Display Area */
 .display-area {
     padding: 20px;
 }
@@ -224,6 +228,7 @@ body.theme-cyan-night { --bg-card: #0a2535; --accent: #06b6d4; }
     color: var(--accent);
 }
 
+/* Buttons Panel */
 .buttons-panel {
     padding: 12px 16px 20px;
     background: rgba(0,0,0,0.2);
@@ -299,6 +304,7 @@ body.theme-cyan-night { --bg-card: #0a2535; --accent: #06b6d4; }
     border-color: var(--accent);
 }
 
+/* Drawer Menu */
 .drawer {
     position: fixed;
     top: 0;
@@ -404,6 +410,7 @@ body.theme-cyan-night { --bg-card: #0a2535; --accent: #06b6d4; }
     display: block;
 }
 
+/* History Modal */
 .history-modal {
     position: fixed;
     top: 50%;
@@ -455,6 +462,7 @@ body.theme-cyan-night { --bg-card: #0a2535; --accent: #06b6d4; }
     margin-top: 4px;
 }
 
+/* Responsive */
 @media (max-width: 600px) {
     .button-grid {
         gap: 5px;
