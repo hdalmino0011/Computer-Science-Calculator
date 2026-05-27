@@ -11,7 +11,6 @@
     <div class="top-bar">
         <button class="menu-btn" id="menuToggleBtn">☰</button>
         <div class="title">CS DISCRETE CALC</div>
-        <div class="theme-quick" id="quickThemeRow"></div>
     </div>
     
     <div class="display-area">
@@ -19,24 +18,25 @@
             <input type="text" id="exprInput" placeholder="Enter expression / conversion ..." autocomplete="off">
         </div>
         <div class="result-box">
-            <span class="result-label">Result:</span>
+            <span class="result-label">RESULT:</span>
             <span id="resultDisplay">0</span>
         </div>
         <div class="steps-box">
-            <div class="steps-label">Step-by-Step:</div>
+            <div class="steps-label">STEP BY STEP:</div>
             <div id="stepsDisplay">Ready</div>
         </div>
     </div>
 
     <div class="buttons-panel">
         <div class="branch-holder">
-            <button class="branch-btn active" data-branch="arithmetic">Arithmetic & Bitwise</button>
-            <button class="branch-btn" data-branch="logic">Logic & Discrete</button>
-            <button class="branch-btn" data-branch="conversion">Number Conversion</button>
+            <button class="branch-btn active" data-branch="arithmetic">Arithmetic</button>
+            <button class="branch-btn" data-branch="logic">Logic</button>
+            <button class="branch-btn" data-branch="settheory">Set Theory</button>
+            <button class="branch-btn" data-branch="conversion">Conversion</button>
         </div>
         <div id="dynamicButtons" class="button-grid"></div>
         <div class="action-buttons">
-            <button id="equalBtn" class="action-btn eval-btn">= EVALUATE</button>
+            <button id="equalBtn" class="action-btn eval-btn">EVALUATE</button>
             <button id="clearBtn" class="action-btn">CLEAR</button>
             <button id="backBtn" class="action-btn">DELETE</button>
             <button id="historyShowBtn" class="action-btn">HISTORY</button>
@@ -46,40 +46,45 @@
 
 <!-- Side Drawer -->
 <div id="drawer" class="drawer">
-    <button class="close-drawer" id="closeDrawerBtn">✖ CLOSE MENU</button>
+    <button class="close-drawer" id="closeDrawerBtn">X CLOSE MENU</button>
+    
     <div class="drawer-section">
-        <div class="drawer-section-title">SETTINGS</div>
-        <button id="drawerThemesBtn">🎨 Theme Gallery (12 Themes)</button>
-        <div class="font-selector">
-            <label>Font Family:</label>
-            <select id="fontSelector">
-                <option value="Times New Roman">Times New Roman</option>
-                <option value="Arial">Arial</option>
-                <option value="Courier New">Courier New</option>
-                <option value="Georgia">Georgia</option>
-                <option value="Verdana">Verdana</option>
-            </select>
-        </div>
+        <div class="drawer-section-title">THEMES (12)</div>
+        <div id="themesGallery" class="themes-gallery"></div>
     </div>
+    
+    <div class="drawer-section">
+        <div class="drawer-section-title">FONT</div>
+        <select id="fontSelector" class="font-select">
+            <option value="Times New Roman">Times New Roman</option>
+            <option value="Arial">Arial</option>
+            <option value="Courier New">Courier New</option>
+            <option value="Georgia">Georgia</option>
+            <option value="Verdana">Verdana</option>
+        </select>
+    </div>
+    
     <div class="drawer-section">
         <div class="drawer-section-title">ABOUT</div>
-        <div id="aboutContent" class="about-content">
+        <div class="about-content">
             <strong>Developed by Hanz Dalmino</strong><br>
             Cebu Technological University Main Campus<br><br>
-            <strong>Purpose:</strong> This calculator is designed for Computer Science and IT students to assist with discrete mathematics, logic operations, binary/hex/octal conversions, and complex arithmetic. Every calculation shows step-by-step evaluation for better understanding.<br><br>
+            <strong>Purpose:</strong> Designed for CS and IT students to assist with discrete mathematics, set theory, logic operations, relational operators, number system conversions, and complex arithmetic with step-by-step evaluation.<br><br>
             <strong>Features:</strong><br>
-            • Arithmetic & Bitwise Operations<br>
-            • Logic Gates & Discrete Math<br>
-            • Number System Conversions<br>
+            • Arithmetic & Bitwise<br>
+            • Logic & Boolean Algebra<br>
+            • Set Theory (Union ∪, Intersection ∩, Complement, Difference, Subset)<br>
+            • Relational Operators (=, ≠, <, >, ≤, ≥)<br>
+            • Number Conversions<br>
             • 12 Colorful Themes<br>
-            • Calculation History<br>
-            • Step-by-Step Display<br>
-            • Desktop & Mobile Responsive
+            • History with Storage<br>
+            • Step-by-Step Display
         </div>
     </div>
+    
     <div class="drawer-section">
-        <button id="drawerClearCacheBtn">🗑️ Clear Cache & History</button>
-        <button id="drawerExitBtn">🔄 Reset Session</button>
+        <button id="drawerClearCacheBtn" class="drawer-action-btn">CLEAR CACHE AND HISTORY</button>
+        <button id="drawerExitBtn" class="drawer-action-btn">RESET SESSION</button>
     </div>
 </div>
 <div id="overlay" class="overlay"></div>
@@ -87,11 +92,11 @@
 <!-- History Modal -->
 <div id="historyModal" class="history-modal">
     <div class="history-header">
-        <h3>Calculation History</h3>
-        <button id="closeHistoryBtn" class="close-modal-btn">✖</button>
+        <h3>CALCULATION HISTORY</h3>
+        <button id="closeHistoryBtn" class="close-modal-btn">X</button>
     </div>
     <div id="historyList" class="history-list">No history yet</div>
-    <button id="clearHistoryBtn" class="clear-history-btn">Clear All History</button>
+    <button id="clearHistoryBtn" class="clear-history-btn">CLEAR ALL HISTORY</button>
 </div>
 
 <script src="script.js"></script>
