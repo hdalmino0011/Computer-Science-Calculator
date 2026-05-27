@@ -31,8 +31,16 @@ function addHistory(expr, result, steps, branch) {
     saveHistory();
 }
 
-// ========== THEMES (12 working themes) ==========
+function clearHistory() {
+    historyEntries = [];
+    saveHistory();
+    const listDiv = document.getElementById('historyList');
+    if (listDiv) listDiv.innerHTML = '<div class="history-item">No history yet</div>';
+}
+
+// ========== THEMES (12) ==========
 const themes = ['default', 'obsidian', 'royalblue', 'orange', 'highcontrast', 'forest', 'crimson', 'slate', 'purple', 'midnight', 'sand', 'cyan-night'];
+const themeNames = ['Default', 'Obsidian', 'Royal Blue', 'Orange', 'High Contrast', 'Forest', 'Crimson', 'Slate', 'Purple', 'Midnight', 'Sand', 'Cyan Night'];
 
 function applyTheme(themeName) {
     document.body.className = '';
@@ -44,20 +52,22 @@ function initTheme() {
     const saved = localStorage.getItem('activeTheme');
     if (saved && themes.includes(saved)) applyTheme(saved);
     else applyTheme('default');
-    renderThemeDots();
+    renderThemesGallery();
 }
 
-function renderThemeDots() {
-    const container = document.getElementById('quickThemeRow');
-    if (!container) return;
-    container.innerHTML = '';
-    themes.forEach(theme => {
-        const dot = document.createElement('div');
-        dot.className = 'theme-dot';
-        dot.title = theme;
-        dot.style.background = getThemeColor(theme);
-        dot.addEventListener('click', () => applyTheme(theme));
-        container.appendChild(dot);
+function renderThemesGallery() {
+    const gallery = document.getElementById('themesGallery');
+    if (!gallery) return;
+    gallery.innerHTML = '';
+    themes.forEach((theme, index) => {
+        const themeBtn = document.createElement('div');
+        themeBtn.className = 'theme-option';
+        themeBtn.textContent = themeNames[index];
+        themeBtn.style.backgroundColor = getThemeColor(theme);
+        themeBtn.style.color = '#fff';
+        themeBtn.style.textShadow = '0 0 2px black';
+        themeBtn.addEventListener('click', () => applyTheme(theme));
+        gallery.appendChild(themeBtn);
     });
 }
 
@@ -98,15 +108,24 @@ const logicButtons = [
     'IMPLIES', 'EQUIV', '(', ')', 'C'
 ];
 
+const setTheoryButtons = [
+    'UNION', 'INTERSECT', 'COMPLEMENT', 'DIFFERENCE',
+    'SUBSET', 'POWERSET', '{', '}', ',', 'C'
+];
+
 const conversionButtons = [
     'DEC->BIN', 'BIN->DEC', 'DEC->HEX', 'HEX->DEC',
     'DEC->OCT', 'OCT->DEC', 'BIN->HEX', 'CLEAR'
 ];
 
+// Relational operators for arithmetic branch
+const relationalOps = ['=', '!=', '<', '>', '<=', '>='];
+
 function renderButtons() {
     let btns = [];
-    if (currentBranch === 'arithmetic') btns = arithmeticButtons;
+    if (currentBranch === 'arithmetic') btns = [...arithmeticButtons, ...relationalOps];
     else if (currentBranch === 'logic') btns = logicButtons;
+    else if (currentBranch === 'settheory') btns = setTheoryButtons;
     else btns = conversionButtons;
     
     dynamicDiv.innerHTML = '';
@@ -135,13 +154,41 @@ function renderButtons() {
     });
 }
 
-// ========== EVALUATION ENGINE ==========
+// ========== EVALUATION ENGINES ==========
+
+// Arithmetic with relational operators
 function evaluateArithmetic(expr) {
     try {
         let clean = expr.replace(/\s/g, '');
         if (!clean) return { result: 'Error', steps: 'Empty expression' };
         
-        const tokens = tokenizeArithmetic(clean);
+        // Check for relational operators
+        const relMatch = clean.match(/(.+?)(==|!=|<=|>=|<|>)(.+)/);
+        if (relMatch) {
+            const left = evaluateArithmeticRaw(relMatch[1]);
+            const right = evaluateArithmeticRaw(relMatch[3]);
+            const op = relMatch[2];
+            let boolResult = false;
+            if (op === '==') boolResult = left.result === right.result;
+            else if (op === '!=') boolResult = left.result !== right.result;
+            else if (op === '<') boolResult = left.result < right.result;
+            else if (op === '>') boolResult = left.result > right.result;
+            else if (op === '<=') boolResult = left.result <= right.result;
+            else if (op === '>=') boolResult = left.result >= right.result;
+            return {
+                result: boolResult,
+                steps: `${left.steps}\n${right.steps}\nStep: ${left.result} ${op} ${right.result} = ${boolResult}`
+            };
+        }
+        return evaluateArithmeticRaw(clean);
+    } catch(e) {
+        return { result: 'Error', steps: 'Invalid expression' };
+    }
+}
+
+function evaluateArithmeticRaw(expr) {
+    try {
+        const tokens = tokenizeArithmetic(expr);
         const rpn = toRPN(tokens);
         const steps = [];
         const stack = [];
@@ -164,7 +211,7 @@ function evaluateArithmetic(expr) {
         }
         return { result: stack[0].val, steps: steps.join('\n') || 'Direct evaluation' };
     } catch(e) {
-        return { result: 'Error', steps: 'Invalid expression' };
+        return { result: 'Error', steps: 'Invalid arithmetic' };
     }
 }
 
@@ -234,15 +281,14 @@ function compute(a, b, op) {
     return 0;
 }
 
+// Logic
 function evaluateLogic(expr) {
     try {
         let clean = expr.replace(/\s/g, '').toUpperCase();
         if (!clean) return { result: 'Error', steps: 'Empty expression' };
-        
         const tokens = tokenizeLogic(clean);
         const rpn = toRPNLogic(tokens);
         let stack = [], steps = [];
-        
         for (let t of rpn) {
             if (!isLogicOp(t)) {
                 let val = (t === 'TRUE');
@@ -262,7 +308,7 @@ function evaluateLogic(expr) {
         }
         return { result: stack[0].val, steps: steps.join('\n') || 'Evaluated' };
     } catch(e) {
-        return { result: 'Error', steps: 'Invalid logic expression. Use TRUE/FALSE and logic operators.' };
+        return { result: 'Error', steps: 'Invalid logic expression. Use TRUE/FALSE and operators.' };
     }
 }
 
@@ -324,6 +370,19 @@ function applyLogicOp(a, b, op) {
     return false;
 }
 
+// Set Theory (simplified evaluation)
+function evaluateSetTheory(expr) {
+    let upper = expr.toUpperCase();
+    if (upper.includes('UNION')) return { result: 'A ∪ B', steps: 'Union: elements in A or B' };
+    if (upper.includes('INTERSECT')) return { result: 'A ∩ B', steps: 'Intersection: elements in both A and B' };
+    if (upper.includes('COMPLEMENT')) return { result: 'A\'', steps: 'Complement: elements not in A' };
+    if (upper.includes('DIFFERENCE')) return { result: 'A \\ B', steps: 'Difference: elements in A but not in B' };
+    if (upper.includes('SUBSET')) return { result: 'A ⊆ B', steps: 'Subset: all elements of A are in B' };
+    if (upper.includes('POWERSET')) return { result: 'P(A)', steps: 'Power set: set of all subsets of A' };
+    return { result: 'Set operation', steps: 'Use UNION, INTERSECT, COMPLEMENT, DIFFERENCE, SUBSET, POWERSET' };
+}
+
+// Conversion
 function evaluateConversion(expr) {
     const patterns = [
         /DEC->BIN\s+(\d+)/i, /BIN->DEC\s+([01]+)/i,
@@ -369,6 +428,7 @@ function evaluateConversion(expr) {
     return { result: 'Error', steps: 'Use format: DEC->BIN 255 or BIN->DEC 1111' };
 }
 
+// Main evaluate
 function evaluate() {
     let raw = exprInput.value.trim();
     if (!raw) {
@@ -380,6 +440,7 @@ function evaluate() {
     let evalRes;
     if (currentBranch === 'arithmetic') evalRes = evaluateArithmetic(raw);
     else if (currentBranch === 'logic') evalRes = evaluateLogic(raw);
+    else if (currentBranch === 'settheory') evalRes = evaluateSetTheory(raw);
     else evalRes = evaluateConversion(raw);
     
     let resStr = evalRes.result.toString();
@@ -410,14 +471,6 @@ function showHistory() {
         `).join('');
     }
     modal.style.display = 'block';
-}
-
-function clearHistory() {
-    if (confirm('Clear all calculation history?')) {
-        historyEntries = [];
-        saveHistory();
-        showHistory();
-    }
 }
 
 function resetSession() {
@@ -484,10 +537,6 @@ function init() {
     document.getElementById('menuToggleBtn').addEventListener('click', () => toggleDrawer(true));
     document.getElementById('closeDrawerBtn').addEventListener('click', () => toggleDrawer(false));
     document.getElementById('overlay').addEventListener('click', () => toggleDrawer(false));
-    document.getElementById('drawerThemesBtn').addEventListener('click', () => {
-        toggleDrawer(false);
-        alert('Use the colored dots at the top right to change themes');
-    });
     document.getElementById('drawerClearCacheBtn').addEventListener('click', () => {
         toggleDrawer(false);
         clearCache();
@@ -501,7 +550,11 @@ function init() {
     document.getElementById('closeHistoryBtn').addEventListener('click', () => {
         document.getElementById('historyModal').style.display = 'none';
     });
-    document.getElementById('clearHistoryBtn').addEventListener('click', clearHistory);
+    document.getElementById('clearHistoryBtn').addEventListener('click', () => {
+        clearHistory();
+        const modal = document.getElementById('historyModal');
+        if (modal.style.display === 'block') showHistory(); // refresh
+    });
     
     // Enter key
     exprInput.addEventListener('keypress', (e) => {
