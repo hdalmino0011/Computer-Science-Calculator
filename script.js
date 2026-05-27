@@ -490,7 +490,7 @@ function clearCache() {
         initFont();
         resetSession();
         alert('Cache cleared. Theme and font reset.');
-}
+ }
 }
 
 function showHelpPage() {
