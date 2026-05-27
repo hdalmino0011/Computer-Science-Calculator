@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=yes">
+    <title>CS Discrete Math Calculator | Hanz Dalmino</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app-container">
+    <div class="top-bar">
+        <button class="menu-btn" id="menuToggleBtn">☰</button>
+        <div class="title">CS DISCRETE CALC</div>
+        <div class="theme-quick" id="quickThemeRow"></div>
+    </div>
+    <div class="display-area">
+        <div class="expression-input">
+            <input type="text" id="exprInput" placeholder="Enter expression / conversion ..." autocomplete="off">
+        </div>
+        <div class="result-box" id="resultDisplay">Result: </div>
+        <div class="steps-box" id="stepsDisplay">Step-by-step will appear here</div>
+    </div>
+
+    <div class="buttons-panel">
+        <div class="branch-holder" id="branchSelector">
+            <button class="branch-btn" data-branch="arithmetic">Arithmetic & Bitwise</button>
+            <button class="branch-btn" data-branch="logic">Logic & Discrete</button>
+            <button class="branch-btn" data-branch="conversion">Number Conversion</button>
+        </div>
+        <div id="dynamicButtons" class="button-grid"></div>
+        <div style="margin-top: 12px; display: flex; gap: 8px;">
+            <button id="equalBtn" class="calc-btn wide-btn" style="background: var(--accent); color:white;">= EVAL</button>
+            <button id="clearBtn" class="calc-btn">C</button>
+            <button id="backBtn" class="calc-btn">DEL</button>
+            <button id="historyShowBtn" class="calc-btn">HIST</button>
+        </div>
+    </div>
+</div>
+
+<!-- Side Drawer -->
+<div id="drawer" class="drawer">
+    <button class="close-drawer" id="closeDrawerBtn">X Close Menu</button>
+    <button id="drawerSettingsBtn">Settings and Themes</button>
+    <button id="drawerThemesBtn">Theme Gallery</button>
+    <button id="drawerAboutBtn">About Developer</button>
+    <button id="drawerClearCacheBtn">Clear Cache (History and Data)</button>
+    <button id="drawerExitBtn">Exit / Reset Session</button>
+    <div style="margin-top: 1rem;">
+        <label>Change Font (5 options)</label>
+        <select id="fontSelector" class="font-select">
+            <option value="Times New Roman">Times New Roman</option>
+            <option value="Arial">Arial</option>
+            <option value="Courier New">Courier New</option>
+            <option value="Georgia">Georgia</option>
+            <option value="Verdana">Verdana</option>
+        </select>
+    </div>
+</div>
+<div id="overlay" class="overlay"></div>
+
+<!-- History Modal -->
+<div id="historyModal" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); width:90%; max-width:500px; background:var(--bg-card); border-radius:24px; z-index:1100; padding:1rem; box-shadow:0 10px 30px black;">
+    <h3>History (Previous equations)</h3>
+    <div id="historyList" style="max-height:300px; overflow-y:auto;"></div>
+    <button id="closeHistoryBtn" style="margin-top:12px; background:var(--accent); border:none; padding:6px 20px; border-radius:30px;">Close</button>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
