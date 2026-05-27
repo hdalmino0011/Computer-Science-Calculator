@@ -27,22 +27,11 @@
         </div>
 
         <div class="buttons-panel">
-            <div class="branch-holder">
-                <button class="branch-btn active" data-branch="arithmetic">ARITH</button>
-                <button class="branch-btn" data-branch="combinatorics">COMBO</button>
-                <button class="branch-btn" data-branch="logic">LOGIC</button>
-                <button class="branch-btn" data-branch="settheory">SET</button>
-                <button class="branch-btn" data-branch="numbertheory">NUMTH</button>
-                <button class="branch-btn" data-branch="conversion">CONV</button>
-                <button class="branch-btn" data-branch="matrix">MATRIX</button>
-                <button class="branch-btn" data-branch="complex">COMPLEX</button>
-            </div>
             <div id="dynamicButtons" class="button-grid"></div>
             <div class="action-buttons">
                 <button id="equalBtn" class="action-btn eval-btn">=</button>
                 <button id="clearBtn" class="action-btn">C</button>
                 <button id="backBtn" class="action-btn">⌫</button>
-                <button id="historyShowBtn" class="action-btn">HIST</button>
             </div>
         </div>
     </div>
@@ -65,6 +54,20 @@
     <button class="close-drawer" id="closeDrawerBtn">✖ CLOSE</button>
     
     <div class="drawer-section">
+        <div class="drawer-section-title">CALCULATOR MODE</div>
+        <div id="branchSelector" class="branch-selector">
+            <button class="branch-drawer-btn active" data-branch="arithmetic">Arithmetic & Bitwise</button>
+            <button class="branch-drawer-btn" data-branch="combinatorics">Combinatorics</button>
+            <button class="branch-drawer-btn" data-branch="logic">Logic & Boolean</button>
+            <button class="branch-drawer-btn" data-branch="settheory">Set Theory</button>
+            <button class="branch-drawer-btn" data-branch="numbertheory">Number Theory</button>
+            <button class="branch-drawer-btn" data-branch="conversion">Number System Conversion</button>
+            <button class="branch-drawer-btn" data-branch="matrix">Matrix Algebra</button>
+            <button class="branch-drawer-btn" data-branch="complex">Complex Numbers</button>
+        </div>
+    </div>
+    
+    <div class="drawer-section">
         <div class="drawer-section-title">THEMES</div>
         <div id="themesGallery" class="themes-gallery"></div>
     </div>
@@ -81,6 +84,12 @@
     </div>
     
     <div class="drawer-section">
+        <div class="drawer-section-title">HISTORY</div>
+        <button id="drawerHistoryBtn" class="drawer-action-btn">VIEW HISTORY</button>
+        <button id="drawerClearHistoryBtn" class="drawer-action-btn" style="background:#ef4444;">CLEAR HISTORY</button>
+    </div>
+    
+    <div class="drawer-section">
         <div class="drawer-section-title">ABOUT</div>
         <div class="about-content">
             <strong>Hanz Dalmino</strong><br>
@@ -92,7 +101,7 @@
     
     <div class="drawer-section">
         <button id="drawerClearCacheBtn" class="drawer-action-btn">CLEAR CACHE</button>
-        <button id="drawerExitBtn" class="drawer-action-btn">RESET</button>
+        <button id="drawerExitBtn" class="drawer-action-btn">RESET SESSION</button>
     </div>
 </div>
 <div id="overlay" class="overlay"></div>
@@ -100,11 +109,10 @@
 <!-- History Modal -->
 <div id="historyModal" class="history-modal">
     <div class="history-header">
-        <h3>HISTORY</h3>
+        <h3>CALCULATION HISTORY</h3>
         <button id="closeHistoryBtn" class="close-modal-btn">X</button>
     </div>
     <div id="historyList" class="history-list">No history</div>
-    <button id="clearHistoryBtn" class="clear-history-btn">CLEAR ALL</button>
 </div>
 
 <script src="script.js"></script>
