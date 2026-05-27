@@ -14,38 +14,49 @@
         <div style="width: 40px;"></div>
     </div>
     
-    <div class="display-area">
-        <div class="expression-input">
-            <input type="text" id="exprInput" placeholder="Enter expression ..." autocomplete="off">
+    <!-- Main Calculator View -->
+    <div id="calculatorView" class="calculator-view">
+        <div class="display-area">
+            <div class="expression-input">
+                <input type="text" id="exprInput" placeholder="Enter expression ..." autocomplete="off">
+            </div>
+            <div class="result-box">
+                <span class="result-label">=</span>
+                <span id="resultDisplay">0</span>
+            </div>
         </div>
-        <div class="result-box">
-            <span class="result-label">=</span>
-            <span id="resultDisplay">0</span>
-        </div>
-        <div class="steps-box">
-            <div class="steps-label">STEPS</div>
-            <div id="stepsDisplay">Ready</div>
+
+        <div class="buttons-panel">
+            <div class="branch-holder">
+                <button class="branch-btn active" data-branch="arithmetic">ARITH</button>
+                <button class="branch-btn" data-branch="combinatorics">COMBO</button>
+                <button class="branch-btn" data-branch="logic">LOGIC</button>
+                <button class="branch-btn" data-branch="settheory">SET</button>
+                <button class="branch-btn" data-branch="numbertheory">NUMTH</button>
+                <button class="branch-btn" data-branch="conversion">CONV</button>
+                <button class="branch-btn" data-branch="matrix">MATRIX</button>
+                <button class="branch-btn" data-branch="complex">COMPLEX</button>
+            </div>
+            <div id="dynamicButtons" class="button-grid"></div>
+            <div class="action-buttons">
+                <button id="equalBtn" class="action-btn eval-btn">=</button>
+                <button id="clearBtn" class="action-btn">C</button>
+                <button id="backBtn" class="action-btn">⌫</button>
+                <button id="historyShowBtn" class="action-btn">HIST</button>
+            </div>
         </div>
     </div>
 
-    <div class="buttons-panel">
-        <div class="branch-holder">
-            <button class="branch-btn active" data-branch="arithmetic">ARITH</button>
-            <button class="branch-btn" data-branch="combinatorics">COMBO</button>
-            <button class="branch-btn" data-branch="logic">LOGIC</button>
-            <button class="branch-btn" data-branch="settheory">SET</button>
-            <button class="branch-btn" data-branch="numbertheory">NUMTH</button>
-            <button class="branch-btn" data-branch="conversion">CONV</button>
-            <button class="branch-btn" data-branch="matrix">MATRIX</button>
-            <button class="branch-btn" data-branch="complex">COMPLEX</button>
+    <!-- Step-by-Step Full View (hidden initially) -->
+    <div id="stepsView" class="steps-view" style="display: none;">
+        <div class="steps-header">
+            <button id="backToCalculatorBtn" class="back-btn">← BACK</button>
+            <div class="steps-title">STEP BY STEP EVALUATION</div>
+            <div style="width: 60px;"></div>
         </div>
-        <div id="dynamicButtons" class="button-grid"></div>
-        <div class="action-buttons">
-            <button id="equalBtn" class="action-btn eval-btn">=</button>
-            <button id="clearBtn" class="action-btn">C</button>
-            <button id="backBtn" class="action-btn">⌫</button>
-            <button id="historyShowBtn" class="action-btn">HIST</button>
-        </div>
+        <div class="steps-expression" id="stepsExpression"></div>
+        <div class="steps-result-full" id="stepsResultFull"></div>
+        <div class="steps-list-full" id="stepsListFull"></div>
     </div>
 </div>
 
