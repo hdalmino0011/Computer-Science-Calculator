@@ -1,105 +1,131 @@
-// --------------------------- STATE & GLOBALS ---------------------------
-let currentBranch = "arithmetic";   // arithmetic, logic, conversion
+// STATE
+let currentBranch = "arithmetic";
 let historyEntries = [];
 
-// DOM elements
+// DOM Elements
 const exprInput = document.getElementById('exprInput');
 const resultDisplay = document.getElementById('resultDisplay');
 const stepsDisplay = document.getElementById('stepsDisplay');
 const dynamicDiv = document.getElementById('dynamicButtons');
-const equalBtn = document.getElementById('equalBtn');
-const clearBtn = document.getElementById('clearBtn');
-const backBtn = document.getElementById('backBtn');
-const historyShowBtn = document.getElementById('historyShowBtn');
 
-// ---------- HISTORY ----------
+// ========== HISTORY ==========
 function loadHistory() {
     const stored = localStorage.getItem('csCalcHistory');
-    if(stored) historyEntries = JSON.parse(stored);
+    if (stored) historyEntries = JSON.parse(stored);
     else historyEntries = [];
 }
+
 function saveHistory() {
     localStorage.setItem('csCalcHistory', JSON.stringify(historyEntries.slice(-50)));
 }
+
 function addHistory(expr, result, steps, branch) {
-    historyEntries.unshift({ expr, result, stepsText: steps, branch, date: new Date().toLocaleString() });
-    if(historyEntries.length > 50) historyEntries.pop();
+    historyEntries.unshift({
+        expr: expr,
+        result: result,
+        steps: steps.substring(0, 200),
+        branch: branch,
+        date: new Date().toLocaleString()
+    });
+    if (historyEntries.length > 50) historyEntries.pop();
     saveHistory();
 }
 
-// ---------- THEMES (12 themes) ----------
-const themes = ["default","obsidian","royalblue","orange","highcontrast","forest","crimson","slate","purple","midnight","sand","cyan-night"];
+// ========== THEMES (12 working themes) ==========
+const themes = ['default', 'obsidian', 'royalblue', 'orange', 'highcontrast', 'forest', 'crimson', 'slate', 'purple', 'midnight', 'sand', 'cyan-night'];
+
 function applyTheme(themeName) {
     document.body.className = '';
     document.body.classList.add(`theme-${themeName}`);
     localStorage.setItem('activeTheme', themeName);
 }
+
 function initTheme() {
     const saved = localStorage.getItem('activeTheme');
-    if(saved && themes.includes(saved)) applyTheme(saved);
+    if (saved && themes.includes(saved)) applyTheme(saved);
     else applyTheme('default');
-    renderQuickThemes();
+    renderThemeDots();
 }
-function renderQuickThemes() {
+
+function renderThemeDots() {
     const container = document.getElementById('quickThemeRow');
-    if(!container) return;
+    if (!container) return;
     container.innerHTML = '';
-    themes.slice(0,8).forEach(t => {
+    themes.forEach(theme => {
         const dot = document.createElement('div');
         dot.className = 'theme-dot';
-        dot.style.background = getThemeColorHint(t);
-        dot.title = t;
-        dot.addEventListener('click', () => applyTheme(t));
+        dot.title = theme;
+        dot.style.background = getThemeColor(theme);
+        dot.addEventListener('click', () => applyTheme(theme));
         container.appendChild(dot);
     });
 }
-function getThemeColorHint(theme) {
-    const hints = { default:"#cbd5e1", obsidian:"#2a2b3b", royalblue:"#103a66", orange:"#e65c1e", highcontrast:"#ffff00", forest:"#2c5e42", crimson:"#882e46", slate:"#3e5768" };
-    return hints[theme] || "#9c58ff";
+
+function getThemeColor(theme) {
+    const colors = {
+        default: '#7c3aed', obsidian: '#a855f7', royalblue: '#3b82f6',
+        orange: '#f97316', highcontrast: '#ffff00', forest: '#22c55e',
+        crimson: '#ef4444', slate: '#64748b', purple: '#c084fc',
+        midnight: '#60a5fa', sand: '#fbbf24', 'cyan-night': '#06b6d4'
+    };
+    return colors[theme] || '#7c3aed';
 }
 
-// ---------- FONTS ----------
-function setFont(fontName) {
-    document.body.style.fontFamily = fontName;
-    localStorage.setItem('appFont', fontName);
-}
-function loadFont() {
-    const savedFont = localStorage.getItem('appFont');
-    if(savedFont) document.body.style.fontFamily = savedFont;
-    else document.body.style.fontFamily = "Times New Roman";
+// ========== FONTS ==========
+function initFont() {
+    const saved = localStorage.getItem('appFont');
+    if (saved) document.body.style.fontFamily = saved;
     const selector = document.getElementById('fontSelector');
-    if(selector) {
-        selector.value = document.body.style.fontFamily || "Times New Roman";
-        selector.addEventListener('change', (e) => setFont(e.target.value));
+    if (selector) {
+        selector.value = saved || 'Times New Roman';
+        selector.addEventListener('change', (e) => {
+            document.body.style.fontFamily = e.target.value;
+            localStorage.setItem('appFont', e.target.value);
+        });
     }
 }
 
-// ---------- BUTTON LAYOUT PER BRANCH ----------
-const arithmeticButtons = ["7","8","9","/","(",")","4","5","6","*","%","^","1","2","3","-","&","|","0",".","+","~","<<",">>","C","="];
-const logicButtons = ["True","False","AND","OR","NOT","XOR","IMPLIES","EQUIV","(",")","C","="];
-const conversionButtons = ["Dec->Bin","Bin->Dec","Dec->Hex","Hex->Dec","Dec->Oct","Oct->Dec","Bin->Hex","Clear","DEL"];
+// ========== BUTTON LAYOUTS ==========
+const arithmeticButtons = [
+    '7', '8', '9', '/', '(', ')',
+    '4', '5', '6', '*', '%', '^',
+    '1', '2', '3', '-', '&', '|',
+    '0', '.', '+', '~', '<<', '>>', 'C'
+];
 
-function renderButtonsForBranch() {
+const logicButtons = [
+    'TRUE', 'FALSE', 'AND', 'OR', 'NOT', 'XOR',
+    'IMPLIES', 'EQUIV', '(', ')', 'C'
+];
+
+const conversionButtons = [
+    'DEC->BIN', 'BIN->DEC', 'DEC->HEX', 'HEX->DEC',
+    'DEC->OCT', 'OCT->DEC', 'BIN->HEX', 'CLEAR'
+];
+
+function renderButtons() {
     let btns = [];
-    if(currentBranch === "arithmetic") btns = arithmeticButtons;
-    else if(currentBranch === "logic") btns = logicButtons;
+    if (currentBranch === 'arithmetic') btns = arithmeticButtons;
+    else if (currentBranch === 'logic') btns = logicButtons;
     else btns = conversionButtons;
-    dynamicDiv.innerHTML = "";
+    
+    dynamicDiv.innerHTML = '';
+    
     btns.forEach(label => {
         const btn = document.createElement('button');
-        btn.className = "calc-btn";
+        btn.className = 'calc-btn';
         btn.textContent = label;
-        if(label === "C" || label === "Clear") {
-            btn.addEventListener('click', () => { exprInput.value = ""; stepsDisplay.innerHTML = "Cleared"; resultDisplay.innerText = "Result: "; });
-        }
-        else if(label === "DEL") {
-            btn.addEventListener('click', () => { exprInput.value = exprInput.value.slice(0,-1); });
-        }
-        else if(label === "=") { /* handled globally */ }
-        else {
+        
+        if (label === 'C' || label === 'CLEAR') {
             btn.addEventListener('click', () => {
-                if(currentBranch === "conversion" && label.includes("->")) {
-                    exprInput.value = label;
+                exprInput.value = '';
+                stepsDisplay.innerHTML = 'Cleared';
+                resultDisplay.textContent = '0';
+            });
+        } else {
+            btn.addEventListener('click', () => {
+                if (currentBranch === 'conversion' && label.includes('->')) {
+                    exprInput.value = label + ' ';
                 } else {
                     exprInput.value += label;
                 }
@@ -107,359 +133,379 @@ function renderButtonsForBranch() {
         }
         dynamicDiv.appendChild(btn);
     });
-    if(currentBranch === "arithmetic") {
-        const acBtn = document.createElement('button');
-        acBtn.className = "calc-btn";
-        acBtn.textContent = "AC";
-        acBtn.addEventListener('click', () => exprInput.value = "");
-        dynamicDiv.appendChild(acBtn);
+}
+
+// ========== EVALUATION ENGINE ==========
+function evaluateArithmetic(expr) {
+    try {
+        let clean = expr.replace(/\s/g, '');
+        if (!clean) return { result: 'Error', steps: 'Empty expression' };
+        
+        const tokens = tokenizeArithmetic(clean);
+        const rpn = toRPN(tokens);
+        const steps = [];
+        const stack = [];
+        
+        for (let tok of rpn) {
+            if (!isOperator(tok)) {
+                stack.push({ val: parseFloat(tok), raw: tok });
+            } else if (tok === '~') {
+                let a = stack.pop();
+                let res = ~a.val;
+                steps.push(`Step ${steps.length+1}: ~(${a.raw}) = ${res}`);
+                stack.push({ val: res, raw: res });
+            } else {
+                let b = stack.pop();
+                let a = stack.pop();
+                let res = compute(a.val, b.val, tok);
+                steps.push(`Step ${steps.length+1}: ${a.raw} ${tok} ${b.raw} = ${res}`);
+                stack.push({ val: res, raw: res });
+            }
+        }
+        return { result: stack[0].val, steps: steps.join('\n') || 'Direct evaluation' };
+    } catch(e) {
+        return { result: 'Error', steps: 'Invalid expression' };
     }
 }
 
-// ---------- ARITHMETIC EVALUATION (Step-by-step) ----------
 function tokenizeArithmetic(expr) {
     let tokens = [], i = 0;
-    while(i < expr.length) {
+    while (i < expr.length) {
         let ch = expr[i];
-        if(ch >= '0' && ch <= '9' || ch === '.') {
+        if (ch >= '0' && ch <= '9' || ch === '.') {
             let num = '';
-            while(i < expr.length && (expr[i] >= '0' && expr[i] <= '9' || expr[i] === '.')) num += expr[i++];
+            while (i < expr.length && (expr[i] >= '0' && expr[i] <= '9' || expr[i] === '.')) num += expr[i++];
             tokens.push(num);
             continue;
         }
-        if(ch === '(' || ch === ')') { tokens.push(ch); i++; continue; }
-        if(ch === '&' && expr[i+1] === '&') { tokens.push('&&'); i+=2; continue; }
-        if(ch === '|' && expr[i+1] === '|') { tokens.push('||'); i+=2; continue; }
-        if(ch === '<' && expr[i+1] === '<') { tokens.push('<<'); i+=2; continue; }
-        if(ch === '>' && expr[i+1] === '>') { tokens.push('>>'); i+=2; continue; }
-        if('+-*/%^&|~'.includes(ch)) { tokens.push(ch); i++; continue; }
+        if (ch === '(' || ch === ')') { tokens.push(ch); i++; continue; }
+        if (ch === '<' && expr[i+1] === '<') { tokens.push('<<'); i+=2; continue; }
+        if (ch === '>' && expr[i+1] === '>') { tokens.push('>>'); i+=2; continue; }
+        if ('+-*/%^&|~'.includes(ch)) { tokens.push(ch); i++; continue; }
         i++;
     }
     return tokens;
 }
-function isOperatorArith(op) { return '+-*/%^&|~<<>>'.includes(op); }
-function precedenceArith(op) {
-    if(op === '~') return 4;
-    if(op === '^') return 3;
-    if(op === '*' || op === '/' || op === '%') return 2;
-    if(op === '+' || op === '-') return 1;
-    if(op === '<<' || op === '>>') return 0;
-    if(op === '&') return -1;
-    if(op === '|') return -2;
-    return -3;
+
+function isOperator(op) {
+    return '+-*/%^&|~<<>>'.includes(op);
 }
+
+function precedence(op) {
+    if (op === '~') return 5;
+    if (op === '^') return 4;
+    if (op === '*' || op === '/' || op === '%') return 3;
+    if (op === '+' || op === '-') return 2;
+    if (op === '<<' || op === '>>') return 1;
+    if (op === '&') return 0;
+    if (op === '|') return -1;
+    return -2;
+}
+
 function toRPN(tokens) {
     let output = [], stack = [];
-    for(let t of tokens) {
-        if(!isNaN(parseFloat(t)) && isFinite(t)) output.push(t);
-        else if(t === '(') stack.push(t);
-        else if(t === ')') {
-            while(stack.length && stack[stack.length-1] !== '(') output.push(stack.pop());
+    for (let t of tokens) {
+        if (!isNaN(parseFloat(t)) && isFinite(t)) output.push(t);
+        else if (t === '(') stack.push(t);
+        else if (t === ')') {
+            while (stack.length && stack[stack.length-1] !== '(') output.push(stack.pop());
             stack.pop();
-        } else if(isOperatorArith(t)) {
-            while(stack.length && isOperatorArith(stack[stack.length-1]) && precedenceArith(stack[stack.length-1]) >= precedenceArith(t)) output.push(stack.pop());
+        } else if (isOperator(t)) {
+            while (stack.length && isOperator(stack[stack.length-1]) && precedence(stack[stack.length-1]) >= precedence(t)) output.push(stack.pop());
             stack.push(t);
         }
     }
-    while(stack.length) output.push(stack.pop());
+    while (stack.length) output.push(stack.pop());
     return output;
 }
-function computeArith(a,b,op) {
+
+function compute(a, b, op) {
     a = Number(a); b = Number(b);
-    if(op === '+') return a+b;
-    if(op === '-') return a-b;
-    if(op === '*') return a*b;
-    if(op === '/') return a/b;
-    if(op === '%') return a%b;
-    if(op === '^') return Math.pow(a,b);
-    if(op === '&') return a&b;
-    if(op === '|') return a|b;
-    if(op === '<<') return a<<b;
-    if(op === '>>') return a>>b;
+    if (op === '+') return a + b;
+    if (op === '-') return a - b;
+    if (op === '*') return a * b;
+    if (op === '/') return a / b;
+    if (op === '%') return a % b;
+    if (op === '^') return Math.pow(a, b);
+    if (op === '&') return a & b;
+    if (op === '|') return a | b;
+    if (op === '<<') return a << b;
+    if (op === '>>') return a >> b;
     return 0;
 }
-function evaluateArithmeticSteps(expression) {
+
+function evaluateLogic(expr) {
     try {
-        let expr = expression.replace(/\s/g, '');
-        if(expr === "") throw new Error();
-        const tokens = tokenizeArithmetic(expr);
-        const rpn = toRPN(tokens);
-        const steps = [];
-        const stack = [];
-        for(let tok of rpn) {
-            if(!isOperatorArith(tok)) {
-                stack.push({val: parseFloat(tok), raw: tok});
-                continue;
-            }
-            if(tok === '~') {
+        let clean = expr.replace(/\s/g, '').toUpperCase();
+        if (!clean) return { result: 'Error', steps: 'Empty expression' };
+        
+        const tokens = tokenizeLogic(clean);
+        const rpn = toRPNLogic(tokens);
+        let stack = [], steps = [];
+        
+        for (let t of rpn) {
+            if (!isLogicOp(t)) {
+                let val = (t === 'TRUE');
+                stack.push({ val: val, raw: t });
+            } else if (t === 'NOT') {
                 let a = stack.pop();
-                let res = ~(a.val);
-                steps.push(`Step ${steps.length+1}: ~(${a.raw}) = ${res}`);
-                stack.push({val: res, raw: res});
+                let res = !a.val;
+                steps.push(`Step ${steps.length+1}: NOT(${a.raw}) = ${res}`);
+                stack.push({ val: res, raw: res });
             } else {
-                let b = stack.pop(); let a = stack.pop();
-                if(!a || !b) throw new Error();
-                let res = computeArith(a.val, b.val, tok);
-                steps.push(`Step ${steps.length+1}: ${a.raw} ${tok} ${b.raw} = ${res}`);
-                stack.push({val: res, raw: res});
+                let b = stack.pop();
+                let a = stack.pop();
+                let res = applyLogicOp(a.val, b.val, t);
+                steps.push(`Step ${steps.length+1}: ${a.raw} ${t} ${b.raw} = ${res}`);
+                stack.push({ val: res, raw: res });
             }
         }
-        return { result: stack[0].val, steps: steps.join('\n') };
+        return { result: stack[0].val, steps: steps.join('\n') || 'Evaluated' };
     } catch(e) {
-        return { result: "Error", steps: "Invalid arithmetic expression" };
+        return { result: 'Error', steps: 'Invalid logic expression. Use TRUE/FALSE and logic operators.' };
     }
 }
 
-// ---------- LOGIC EVALUATION ----------
 function tokenizeLogic(expr) {
     let tokens = [], i = 0;
-    const ops = ['AND','OR','NOT','XOR','IMPLIES','EQUIV','TRUE','FALSE','(',')'];
-    while(i < expr.length) {
-        if(expr[i] === '(' || expr[i] === ')') { tokens.push(expr[i]); i++; continue; }
+    const ops = ['TRUE', 'FALSE', 'AND', 'OR', 'NOT', 'XOR', 'IMPLIES', 'EQUIV', '(', ')'];
+    while (i < expr.length) {
+        if (expr[i] === '(' || expr[i] === ')') { tokens.push(expr[i]); i++; continue; }
         let matched = false;
-        for(let op of ops) {
-            if(expr.startsWith(op, i)) {
+        for (let op of ops) {
+            if (expr.startsWith(op, i)) {
                 tokens.push(op);
                 i += op.length;
                 matched = true;
                 break;
             }
         }
-        if(!matched) i++;
+        if (!matched) i++;
     }
     return tokens;
 }
-function isLogicOp(tok) { return ['AND','OR','NOT','XOR','IMPLIES','EQUIV'].includes(tok); }
+
+function isLogicOp(tok) {
+    return ['AND', 'OR', 'NOT', 'XOR', 'IMPLIES', 'EQUIV'].includes(tok);
+}
+
 function precedenceLogic(op) {
-    if(op === 'NOT') return 4;
-    if(op === 'AND') return 3;
-    if(op === 'XOR') return 2;
-    if(op === 'OR') return 1;
-    if(op === 'IMPLIES' || op === 'EQUIV') return 0;
+    if (op === 'NOT') return 4;
+    if (op === 'AND') return 3;
+    if (op === 'XOR') return 2;
+    if (op === 'OR') return 1;
+    if (op === 'IMPLIES' || op === 'EQUIV') return 0;
     return -1;
 }
+
 function toRPNLogic(tokens) {
     let output = [], stack = [];
-    for(let t of tokens) {
-        if(t === 'TRUE' || t === 'FALSE') output.push(t);
-        else if(t === '(') stack.push(t);
-        else if(t === ')') {
-            while(stack.length && stack[stack.length-1] !== '(') output.push(stack.pop());
+    for (let t of tokens) {
+        if (t === 'TRUE' || t === 'FALSE') output.push(t);
+        else if (t === '(') stack.push(t);
+        else if (t === ')') {
+            while (stack.length && stack[stack.length-1] !== '(') output.push(stack.pop());
             stack.pop();
-        } else if(isLogicOp(t)) {
-            while(stack.length && isLogicOp(stack[stack.length-1]) && precedenceLogic(stack[stack.length-1]) >= precedenceLogic(t)) output.push(stack.pop());
+        } else if (isLogicOp(t)) {
+            while (stack.length && isLogicOp(stack[stack.length-1]) && precedenceLogic(stack[stack.length-1]) >= precedenceLogic(t)) output.push(stack.pop());
             stack.push(t);
         }
     }
-    while(stack.length) output.push(stack.pop());
+    while (stack.length) output.push(stack.pop());
     return output;
 }
-function applyLogic(a,b,op) {
-    if(op === 'AND') return a && b;
-    if(op === 'OR') return a || b;
-    if(op === 'XOR') return a !== b;
-    if(op === 'IMPLIES') return (!a) || b;
-    if(op === 'EQUIV') return a === b;
+
+function applyLogicOp(a, b, op) {
+    if (op === 'AND') return a && b;
+    if (op === 'OR') return a || b;
+    if (op === 'XOR') return a !== b;
+    if (op === 'IMPLIES') return (!a) || b;
+    if (op === 'EQUIV') return a === b;
     return false;
 }
-function evaluateLogicSteps(expr) {
-    try {
-        let clean = expr.replace(/\s/g, '').toUpperCase();
-        if(clean === "") throw new Error();
-        const tokens = tokenizeLogic(clean);
-        const rpn = toRPNLogic(tokens);
-        let stack = [], steps = [];
-        for(let t of rpn) {
-            if(!isLogicOp(t)) {
-                let boolVal = (t === 'TRUE');
-                stack.push({val: boolVal, raw: t});
-                continue;
+
+function evaluateConversion(expr) {
+    const patterns = [
+        /DEC->BIN\s+(\d+)/i, /BIN->DEC\s+([01]+)/i,
+        /DEC->HEX\s+(\d+)/i, /HEX->DEC\s+([0-9A-F]+)/i,
+        /DEC->OCT\s+(\d+)/i, /OCT->DEC\s+([0-7]+)/i,
+        /BIN->HEX\s+([01]+)/i
+    ];
+    
+    for (let pattern of patterns) {
+        let match = expr.match(pattern);
+        if (match) {
+            let input = match[1];
+            if (pattern.toString().includes('DEC->BIN')) {
+                let num = parseInt(input);
+                return { result: num.toString(2), steps: `Step 1: Convert ${num} to binary = ${num.toString(2)}` };
             }
-            if(t === 'NOT') {
-                let a = stack.pop();
-                let res = !a.val;
-                steps.push(`Step ${steps.length+1}: NOT(${a.raw}) = ${res}`);
-                stack.push({val: res, raw: res});
-            } else {
-                let b = stack.pop(), a = stack.pop();
-                let res = applyLogic(a.val, b.val, t);
-                steps.push(`Step ${steps.length+1}: ${a.raw} ${t} ${b.raw} = ${res}`);
-                stack.push({val: res, raw: res});
+            if (pattern.toString().includes('BIN->DEC')) {
+                let num = parseInt(input, 2);
+                return { result: num, steps: `Step 1: Binary ${input} to decimal = ${num}` };
+            }
+            if (pattern.toString().includes('DEC->HEX')) {
+                let num = parseInt(input);
+                return { result: num.toString(16).toUpperCase(), steps: `Step 1: Convert ${num} to hex = ${num.toString(16).toUpperCase()}` };
+            }
+            if (pattern.toString().includes('HEX->DEC')) {
+                let num = parseInt(input, 16);
+                return { result: num, steps: `Step 1: Hex ${input} to decimal = ${num}` };
+            }
+            if (pattern.toString().includes('DEC->OCT')) {
+                let num = parseInt(input);
+                return { result: num.toString(8), steps: `Step 1: Convert ${num} to octal = ${num.toString(8)}` };
+            }
+            if (pattern.toString().includes('OCT->DEC')) {
+                let num = parseInt(input, 8);
+                return { result: num, steps: `Step 1: Octal ${input} to decimal = ${num}` };
+            }
+            if (pattern.toString().includes('BIN->HEX')) {
+                let dec = parseInt(input, 2);
+                return { result: dec.toString(16).toUpperCase(), steps: `Step 1: Binary to decimal = ${dec}\nStep 2: Decimal to hex = ${dec.toString(16).toUpperCase()}` };
             }
         }
-        return { result: stack[0].val, steps: steps.join('\n') };
-    } catch(e) {
-        return { result: "Logic Error", steps: "Use TRUE/FALSE, AND, OR, NOT, XOR, IMPLIES, EQUIV, parentheses" };
     }
+    return { result: 'Error', steps: 'Use format: DEC->BIN 255 or BIN->DEC 1111' };
 }
 
-// ---------- CONVERSION (Step-by-step) ----------
-function performConversion(convType, inputVal) {
-    let steps = [];
-    try {
-        if(convType === "Dec->Bin") {
-            let num = parseInt(inputVal);
-            if(isNaN(num)) throw new Error();
-            let binary = num.toString(2);
-            steps.push(`Step 1: Convert ${num} to binary: ${binary}`);
-            return {result: binary, steps: steps.join('\n')};
-        }
-        if(convType === "Bin->Dec") {
-            let dec = parseInt(inputVal, 2);
-            steps.push(`Step 1: Binary ${inputVal} = ${dec} decimal`);
-            return {result: dec, steps: steps.join('\n')};
-        }
-        if(convType === "Dec->Hex") {
-            let num = parseInt(inputVal);
-            let hex = num.toString(16).toUpperCase();
-            steps.push(`Step 1: Convert ${num} to hex: ${hex}`);
-            return {result: hex, steps: steps.join('\n')};
-        }
-        if(convType === "Hex->Dec") {
-            let dec = parseInt(inputVal, 16);
-            steps.push(`Step 1: Hex ${inputVal} = ${dec} decimal`);
-            return {result: dec, steps: steps.join('\n')};
-        }
-        if(convType === "Dec->Oct") {
-            let num = parseInt(inputVal);
-            let oct = num.toString(8);
-            steps.push(`Step 1: Convert ${num} to octal: ${oct}`);
-            return {result: oct, steps: steps.join('\n')};
-        }
-        if(convType === "Oct->Dec") {
-            let dec = parseInt(inputVal, 8);
-            steps.push(`Step 1: Octal ${inputVal} = ${dec} decimal`);
-            return {result: dec, steps: steps.join('\n')};
-        }
-        if(convType === "Bin->Hex") {
-            let dec = parseInt(inputVal, 2);
-            let hex = dec.toString(16).toUpperCase();
-            steps.push(`Step 1: Binary to decimal: ${dec}`);
-            steps.push(`Step 2: Decimal to hex: ${hex}`);
-            return {result: hex, steps: steps.join('\n')};
-        }
-        return {result: "Invalid conversion", steps: "Use conversion buttons then enter a number"};
-    } catch(e) {
-        return {result: "Error", steps: "Invalid input for conversion"};
-    }
-}
-
-// ---------- MAIN EVALUATION ----------
-function evaluateCurrent() {
+function evaluate() {
     let raw = exprInput.value.trim();
-    if(!raw) {
-        resultDisplay.innerText = "Result: ";
-        stepsDisplay.innerHTML = "Enter an expression or conversion.";
+    if (!raw) {
+        resultDisplay.textContent = '0';
+        stepsDisplay.innerHTML = 'Enter an expression';
         return;
     }
+    
     let evalRes;
-    if(currentBranch === "arithmetic") {
-        evalRes = evaluateArithmeticSteps(raw);
-    } else if(currentBranch === "logic") {
-        evalRes = evaluateLogicSteps(raw);
-    } else {
-        // conversion branch
-        let match = raw.match(/(Dec->Bin|Bin->Dec|Dec->Hex|Hex->Dec|Dec->Oct|Oct->Dec|Bin->Hex)\s+(.+)/i);
-        if(match) {
-            evalRes = performConversion(match[1], match[2]);
-        } else if(raw.includes("->")) {
-            let parts = raw.split("->");
-            let convType = parts[0] + "->" + (parts[1].split(" ")[0] || "");
-            let val = parts[1].replace(convType.split("->")[1], "").trim();
-            evalRes = performConversion(convType, val);
-        } else {
-            evalRes = {result: "Invalid conversion", steps: "Click a conversion button (e.g., Dec->Bin) then type a number"};
-        }
-    }
+    if (currentBranch === 'arithmetic') evalRes = evaluateArithmetic(raw);
+    else if (currentBranch === 'logic') evalRes = evaluateLogic(raw);
+    else evalRes = evaluateConversion(raw);
+    
     let resStr = evalRes.result.toString();
-    resultDisplay.innerText = "Result: " + resStr;
-    stepsDisplay.innerHTML = evalRes.steps || "No steps generated";
-    addHistory(raw, resStr, evalRes.steps || "Steps computed", currentBranch);
+    resultDisplay.textContent = resStr;
+    stepsDisplay.innerHTML = evalRes.steps || 'No steps available';
+    addHistory(raw, resStr, evalRes.steps, currentBranch);
 }
 
-// ---------- DRAWER & UI ----------
+// ========== UI ==========
 function toggleDrawer(open) {
     document.getElementById('drawer').classList.toggle('open', open);
     document.getElementById('overlay').classList.toggle('active', open);
 }
-function clearCache() {
-    localStorage.clear();
-    historyEntries = [];
-    saveHistory();
-    alert("Cache and history cleared. Theme reset to default.");
-    applyTheme('default');
-    loadFont();
-}
-function showAbout() {
-    alert("Developed by Hanz Dalmino\nCebu Technological University Main Campus\n\nReason: Designed to assist CS/IT students with discrete mathematics, logic, binary conversions, and complex arithmetic. Provides step-by-step evaluation. Built for web, desktop, and mobile as an educational tool.");
-}
-function showHistoryModal() {
+
+function showHistory() {
     const modal = document.getElementById('historyModal');
     const listDiv = document.getElementById('historyList');
-    if(historyEntries.length === 0) listDiv.innerHTML = "<i>No history yet</i>";
-    else {
-        listDiv.innerHTML = historyEntries.map(h => 
-            `<div style="border-bottom:1px solid #6a4a9a; padding:8px;">
-                <b>${escapeHtml(h.expr)}</b> = ${escapeHtml(h.result)}<br>
-                <small style="color:#b77cff;">${h.branch} | ${h.date}</small>
-             </div>`
-        ).join('');
+    
+    if (historyEntries.length === 0) {
+        listDiv.innerHTML = '<div class="history-item">No history yet</div>';
+    } else {
+        listDiv.innerHTML = historyEntries.map(h => `
+            <div class="history-item">
+                <div class="history-expr">${escapeHtml(h.expr)}</div>
+                <div class="history-result">= ${escapeHtml(h.result)}</div>
+                <div class="history-meta">${h.branch} | ${h.date}</div>
+            </div>
+        `).join('');
     }
     modal.style.display = 'block';
-    document.getElementById('closeHistoryBtn').onclick = () => modal.style.display = 'none';
 }
+
+function clearHistory() {
+    if (confirm('Clear all calculation history?')) {
+        historyEntries = [];
+        saveHistory();
+        showHistory();
+    }
+}
+
+function resetSession() {
+    exprInput.value = '';
+    resultDisplay.textContent = '0';
+    stepsDisplay.innerHTML = 'Ready';
+}
+
+function clearCache() {
+    if (confirm('Clear all cache, history, and reset to defaults?')) {
+        localStorage.clear();
+        historyEntries = [];
+        saveHistory();
+        initTheme();
+        initFont();
+        resetSession();
+        alert('Cache cleared. Theme and font reset to defaults.');
+    }
+}
+
 function escapeHtml(str) {
-    if(!str) return '';
+    if (!str) return '';
     return str.replace(/[&<>]/g, function(m) {
-        if(m === '&') return '&amp;';
-        if(m === '<') return '&lt;';
-        if(m === '>') return '&gt;';
+        if (m === '&') return '&amp;';
+        if (m === '<') return '&lt;';
+        if (m === '>') return '&gt;';
         return m;
     });
 }
 
-// ---------- INITIALIZATION ----------
+// ========== INITIALIZATION ==========
 function init() {
     loadHistory();
     initTheme();
-    loadFont();
-    renderButtonsForBranch();
+    initFont();
+    renderButtons();
     
+    // Branch buttons
     document.querySelectorAll('.branch-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
-            currentBranch = e.target.getAttribute('data-branch');
-            renderButtonsForBranch();
-            exprInput.value = "";
-            stepsDisplay.innerHTML = `Switched to ${currentBranch} mode.`;
-            resultDisplay.innerText = "Result: ";
+            document.querySelectorAll('.branch-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentBranch = btn.getAttribute('data-branch');
+            renderButtons();
+            exprInput.value = '';
+            stepsDisplay.innerHTML = `Switched to ${currentBranch} mode`;
+            resultDisplay.textContent = '0';
         });
     });
     
-    equalBtn.addEventListener('click', evaluateCurrent);
-    clearBtn.addEventListener('click', () => { exprInput.value = ""; stepsDisplay.innerHTML = "Cleared input."; });
-    backBtn.addEventListener('click', () => { exprInput.value = exprInput.value.slice(0,-1); });
-    historyShowBtn.addEventListener('click', showHistoryModal);
+    // Action buttons
+    document.getElementById('equalBtn').addEventListener('click', evaluate);
+    document.getElementById('clearBtn').addEventListener('click', () => {
+        exprInput.value = '';
+        stepsDisplay.innerHTML = 'Cleared';
+        resultDisplay.textContent = '0';
+    });
+    document.getElementById('backBtn').addEventListener('click', () => {
+        exprInput.value = exprInput.value.slice(0, -1);
+    });
+    document.getElementById('historyShowBtn').addEventListener('click', showHistory);
     
+    // Drawer
     document.getElementById('menuToggleBtn').addEventListener('click', () => toggleDrawer(true));
     document.getElementById('closeDrawerBtn').addEventListener('click', () => toggleDrawer(false));
     document.getElementById('overlay').addEventListener('click', () => toggleDrawer(false));
-    document.getElementById('drawerClearCacheBtn').addEventListener('click', () => { clearCache(); toggleDrawer(false); });
-    document.getElementById('drawerExitBtn').addEventListener('click', () => {
-        if(confirm("Reset current session and clear input?")) {
-            exprInput.value = "";
-            resultDisplay.innerText = "Result: ";
-            stepsDisplay.innerHTML = "Session reset";
-        }
-        toggleDrawer(false);
-    });
-    document.getElementById('drawerAboutBtn').addEventListener('click', () => { showAbout(); toggleDrawer(false); });
     document.getElementById('drawerThemesBtn').addEventListener('click', () => {
-        alert("Use the colored dots at the top right to switch between 12 themes.");
         toggleDrawer(false);
+        alert('Use the colored dots at the top right to change themes');
     });
-    document.getElementById('drawerSettingsBtn').addEventListener('click', () => {
-        alert("Font selector is in the drawer. Theme dots are at the top.");
+    document.getElementById('drawerClearCacheBtn').addEventListener('click', () => {
         toggleDrawer(false);
+        clearCache();
+    });
+    document.getElementById('drawerExitBtn').addEventListener('click', () => {
+        toggleDrawer(false);
+        resetSession();
+    });
+    
+    // History modal
+    document.getElementById('closeHistoryBtn').addEventListener('click', () => {
+        document.getElementById('historyModal').style.display = 'none';
+    });
+    document.getElementById('clearHistoryBtn').addEventListener('click', clearHistory);
+    
+    // Enter key
+    exprInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') evaluate();
     });
 }
 
