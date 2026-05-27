@@ -216,10 +216,10 @@ function generateSteps(expr) {
     steps.push(`Original: ${expr}`);
     steps.push(`After symbol mapping: ${clean}`);
     
-    // Show sub-expression breakdown
     let processed = clean.replace(/√/g, 'sqrt').replace(/\^/g, '**');
     processed = processed.replace(/(\d+)!/g, (_, n) => `fact(${n})`);
-    processed = processed.replace(/(\d+)%/g, (_, n) => `(${n}/100)`);
+    // Fixed: only convert % to percentage if NOT directly followed by a digit
+    processed = processed.replace(/(\d+)%(?![0-9])/g, (_, n) => `(${n}/100)`);
     processed = processed.replace(/\bAND\b/gi, '&&').replace(/\bOR\b/gi, '||').replace(/\bNOT\b/gi, '!');
     processed = processed.replace(/==/g, '===').replace(/!=/g, '!==');
     processed = processed.replace(/\bsin\(/g, 'Math.sin(');
@@ -232,7 +232,6 @@ function generateSteps(expr) {
     
     steps.push(`Converted to JS: ${processed}`);
     
-    // Try to identify and evaluate sub-expressions in parentheses
     const parenRegex = /\(([^()]+)\)/g;
     let match;
     let subExprs = [];
@@ -253,7 +252,6 @@ function generateSteps(expr) {
         });
     }
     
-    // Final evaluation
     try {
         const fn = new Function('factorial', 'return (' + processed + ')');
         const result = fn(fact);
@@ -273,7 +271,8 @@ function evaluateUniversal(expr) {
         
         let processed = clean.replace(/√/g, 'sqrt').replace(/\^/g, '**');
         processed = processed.replace(/(\d+)!/g, (_, n) => `fact(${n})`);
-        processed = processed.replace(/(\d+)%/g, (_, n) => `(${n}/100)`);
+        // Fixed: only convert % to percentage if NOT directly followed by a digit
+        processed = processed.replace(/(\d+)%(?![0-9])/g, (_, n) => `(${n}/100)`);
         processed = processed.replace(/\bAND\b/gi, '&&').replace(/\bOR\b/gi, '||').replace(/\bNOT\b/gi, '!');
         processed = processed.replace(/==/g, '===').replace(/!=/g, '!==');
         processed = processed.replace(/\bsin\(/g, 'Math.sin(');
@@ -414,13 +413,11 @@ function evaluate() {
         return;
     }
     
-    // Hide fallback message initially
     fallbackMessage.style.display = 'none';
     
     let res;
     let usedFallback = false;
     
-    // First, try branch-specific evaluator
     if (currentBranch === 'universal') {
         res = evaluateUniversal(raw);
     } else if (currentBranch === 'arithmetic') {
@@ -443,7 +440,6 @@ function evaluate() {
         res = evaluateUniversal(raw);
     }
 
-    // If branch-specific failed or returned Error, fallback to universal evaluation
     if (res.result === 'Error' || (typeof res.result === 'string' && res.result.startsWith('Error'))) {
         const fallbackRes = evaluateUniversal(raw);
         if (fallbackRes.result !== 'Error' && !(typeof fallbackRes.result === 'string' && fallbackRes.result.startsWith('Error'))) {
@@ -456,7 +452,6 @@ function evaluate() {
     let resStr = res.result.toString();
     resultDisplay.textContent = resStr;
     
-    // Show fallback message below result if universal fallback was used
     if (usedFallback && currentBranch !== 'universal' && currentBranch !== 'arithmetic') {
         fallbackMessage.textContent = 'Expression entered does not match the branch, evaluating using universal branch.';
         fallbackMessage.style.display = 'block';
@@ -588,7 +583,6 @@ function init() {
             btn.classList.add('active');
             currentBranch = btn.getAttribute('data-branch');
             renderButtons();
-            // Keep expression intact when switching branches
             fallbackMessage.style.display = 'none';
             toggleDrawer(false);
         });
