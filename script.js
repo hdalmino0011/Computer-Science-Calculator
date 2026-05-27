@@ -1,7 +1,6 @@
 // --------------------------- STATE & GLOBALS ---------------------------
 let currentBranch = "arithmetic";   // arithmetic, logic, conversion
 let historyEntries = [];
-let stepsCache = "";
 
 // DOM elements
 const exprInput = document.getElementById('exprInput');
@@ -13,7 +12,7 @@ const clearBtn = document.getElementById('clearBtn');
 const backBtn = document.getElementById('backBtn');
 const historyShowBtn = document.getElementById('historyShowBtn');
 
-// Load history from localStorage
+// ---------- HISTORY ----------
 function loadHistory() {
     const stored = localStorage.getItem('csCalcHistory');
     if(stored) historyEntries = JSON.parse(stored);
@@ -28,7 +27,7 @@ function addHistory(expr, result, steps, branch) {
     saveHistory();
 }
 
-// ---------- THEME HANDLING (12 themes) ----------
+// ---------- THEMES (12 themes) ----------
 const themes = ["default","obsidian","royalblue","orange","highcontrast","forest","crimson","slate","purple","midnight","sand","cyan-night"];
 function applyTheme(themeName) {
     document.body.className = '';
@@ -56,10 +55,10 @@ function renderQuickThemes() {
 }
 function getThemeColorHint(theme) {
     const hints = { default:"#cbd5e1", obsidian:"#2a2b3b", royalblue:"#103a66", orange:"#e65c1e", highcontrast:"#ffff00", forest:"#2c5e42", crimson:"#882e46", slate:"#3e5768" };
-    return hints[theme] || "#aaa";
+    return hints[theme] || "#9c58ff";
 }
 
-// ---------- FONT HANDLING ----------
+// ---------- FONTS ----------
 function setFont(fontName) {
     document.body.style.fontFamily = fontName;
     localStorage.setItem('appFont', fontName);
@@ -69,20 +68,17 @@ function loadFont() {
     if(savedFont) document.body.style.fontFamily = savedFont;
     else document.body.style.fontFamily = "Times New Roman";
     const selector = document.getElementById('fontSelector');
-    if(selector) selector.value = document.body.style.fontFamily || "Times New Roman";
-    selector?.addEventListener('change', (e) => setFont(e.target.value));
+    if(selector) {
+        selector.value = document.body.style.fontFamily || "Times New Roman";
+        selector.addEventListener('change', (e) => setFont(e.target.value));
+    }
 }
 
 // ---------- BUTTON LAYOUT PER BRANCH ----------
-const arithmeticButtons = [
-    "7","8","9","/","(",")","4","5","6","*","%","^","1","2","3","-","&","|","0",".","+","~","<<",">>","C","="
-];
-const logicButtons = [
-    "True","False","AND","OR","NOT","XOR","IMPLIES","EQUIV","(",")","C","="
-];
-const conversionButtons = [
-    "Dec->Bin","Bin->Dec","Dec->Hex","Hex->Dec","Dec->Oct","Oct->Dec","Bin->Hex","Clear","DEL"
-];
+const arithmeticButtons = ["7","8","9","/","(",")","4","5","6","*","%","^","1","2","3","-","&","|","0",".","+","~","<<",">>","C","="];
+const logicButtons = ["True","False","AND","OR","NOT","XOR","IMPLIES","EQUIV","(",")","C","="];
+const conversionButtons = ["Dec->Bin","Bin->Dec","Dec->Hex","Hex->Dec","Dec->Oct","Oct->Dec","Bin->Hex","Clear","DEL"];
+
 function renderButtonsForBranch() {
     let btns = [];
     if(currentBranch === "arithmetic") btns = arithmeticButtons;
@@ -99,12 +95,10 @@ function renderButtonsForBranch() {
         else if(label === "DEL") {
             btn.addEventListener('click', () => { exprInput.value = exprInput.value.slice(0,-1); });
         }
-        else if(label === "=") {
-            // handled globally
-        }
+        else if(label === "=") { /* handled globally */ }
         else {
             btn.addEventListener('click', () => {
-                if(currentBranch === "conversion" && (label.includes("->"))) {
+                if(currentBranch === "conversion" && label.includes("->")) {
                     exprInput.value = label;
                 } else {
                     exprInput.value += label;
@@ -113,7 +107,6 @@ function renderButtonsForBranch() {
         }
         dynamicDiv.appendChild(btn);
     });
-    // Add AC button for arithmetic branch for completeness
     if(currentBranch === "arithmetic") {
         const acBtn = document.createElement('button');
         acBtn.className = "calc-btn";
@@ -123,10 +116,9 @@ function renderButtonsForBranch() {
     }
 }
 
-// ---------- EVALUATION ENGINE (Arithmetic with step-by-step) ----------
+// ---------- ARITHMETIC EVALUATION (Step-by-step) ----------
 function tokenizeArithmetic(expr) {
-    let tokens = [];
-    let i = 0;
+    let tokens = [], i = 0;
     while(i < expr.length) {
         let ch = expr[i];
         if(ch >= '0' && ch <= '9' || ch === '.') {
@@ -189,7 +181,7 @@ function computeArith(a,b,op) {
 function evaluateArithmeticSteps(expression) {
     try {
         let expr = expression.replace(/\s/g, '');
-        if(expr === "") throw new Error("empty");
+        if(expr === "") throw new Error();
         const tokens = tokenizeArithmetic(expr);
         const rpn = toRPN(tokens);
         const steps = [];
@@ -206,20 +198,19 @@ function evaluateArithmeticSteps(expression) {
                 stack.push({val: res, raw: res});
             } else {
                 let b = stack.pop(); let a = stack.pop();
-                if(!a || !b) throw new Error("invalid expr");
+                if(!a || !b) throw new Error();
                 let res = computeArith(a.val, b.val, tok);
                 steps.push(`Step ${steps.length+1}: ${a.raw} ${tok} ${b.raw} = ${res}`);
                 stack.push({val: res, raw: res});
             }
         }
-        let finalVal = stack[0].val;
-        return { result: finalVal, steps: steps.join('\n') };
+        return { result: stack[0].val, steps: steps.join('\n') };
     } catch(e) {
         return { result: "Error", steps: "Invalid arithmetic expression" };
     }
 }
 
-// ---------- LOGIC EVALUATION (Discrete) ----------
+// ---------- LOGIC EVALUATION ----------
 function tokenizeLogic(expr) {
     let tokens = [], i = 0;
     const ops = ['AND','OR','NOT','XOR','IMPLIES','EQUIV','TRUE','FALSE','(',')'];
@@ -263,7 +254,7 @@ function toRPNLogic(tokens) {
     while(stack.length) output.push(stack.pop());
     return output;
 }
-function applyLogic(a, b, op) {
+function applyLogic(a,b,op) {
     if(op === 'AND') return a && b;
     if(op === 'OR') return a || b;
     if(op === 'XOR') return a !== b;
@@ -298,7 +289,7 @@ function evaluateLogicSteps(expr) {
         }
         return { result: stack[0].val, steps: steps.join('\n') };
     } catch(e) {
-        return { result: "Logic Error", steps: "Check syntax: use TRUE/FALSE, AND, OR, NOT, XOR, IMPLIES, EQUIV" };
+        return { result: "Logic Error", steps: "Use TRUE/FALSE, AND, OR, NOT, XOR, IMPLIES, EQUIV, parentheses" };
     }
 }
 
@@ -347,13 +338,13 @@ function performConversion(convType, inputVal) {
             steps.push(`Step 2: Decimal to hex: ${hex}`);
             return {result: hex, steps: steps.join('\n')};
         }
-        return {result: "Invalid conversion", steps: "Provide a valid conversion type and number"};
+        return {result: "Invalid conversion", steps: "Use conversion buttons then enter a number"};
     } catch(e) {
         return {result: "Error", steps: "Invalid input for conversion"};
     }
 }
 
-// ---------- MAIN EVALUATION DISPATCHER ----------
+// ---------- MAIN EVALUATION ----------
 function evaluateCurrent() {
     let raw = exprInput.value.trim();
     if(!raw) {
@@ -367,24 +358,17 @@ function evaluateCurrent() {
     } else if(currentBranch === "logic") {
         evalRes = evaluateLogicSteps(raw);
     } else {
-        // conversion branch: raw may be like "Dec->Bin 255" or click button sets exact command
-        if(raw.includes("->")) {
+        // conversion branch
+        let match = raw.match(/(Dec->Bin|Bin->Dec|Dec->Hex|Hex->Dec|Dec->Oct|Oct->Dec|Bin->Hex)\s+(.+)/i);
+        if(match) {
+            evalRes = performConversion(match[1], match[2]);
+        } else if(raw.includes("->")) {
             let parts = raw.split("->");
-            if(parts.length === 2) {
-                let convType = parts[0] + "->" + parts[1].split(" ")[0];
-                let value = parts[1].replace(convType.split("->")[1], "").trim();
-                evalRes = performConversion(convType, value);
-            } else {
-                evalRes = performConversion(raw, "");
-            }
+            let convType = parts[0] + "->" + (parts[1].split(" ")[0] || "");
+            let val = parts[1].replace(convType.split("->")[1], "").trim();
+            evalRes = performConversion(convType, val);
         } else {
-            // try to detect if user typed a command like "Dec->Bin 10"
-            let match = raw.match(/(Dec->Bin|Bin->Dec|Dec->Hex|Hex->Dec|Dec->Oct|Oct->Dec|Bin->Hex)\s+(.+)/i);
-            if(match) {
-                evalRes = performConversion(match[1], match[2]);
-            } else {
-                evalRes = {result: "Invalid conversion", steps: "Click a conversion button then enter a number"};
-            }
+            evalRes = {result: "Invalid conversion", steps: "Click a conversion button (e.g., Dec->Bin) then type a number"};
         }
     }
     let resStr = evalRes.result.toString();
@@ -393,7 +377,7 @@ function evaluateCurrent() {
     addHistory(raw, resStr, evalRes.steps || "Steps computed", currentBranch);
 }
 
-// ---------- DRAWER & UI HANDLERS ----------
+// ---------- DRAWER & UI ----------
 function toggleDrawer(open) {
     document.getElementById('drawer').classList.toggle('open', open);
     document.getElementById('overlay').classList.toggle('active', open);
@@ -415,9 +399,9 @@ function showHistoryModal() {
     if(historyEntries.length === 0) listDiv.innerHTML = "<i>No history yet</i>";
     else {
         listDiv.innerHTML = historyEntries.map(h => 
-            `<div style="border-bottom:1px solid var(--border); padding:6px;">
+            `<div style="border-bottom:1px solid #6a4a9a; padding:8px;">
                 <b>${escapeHtml(h.expr)}</b> = ${escapeHtml(h.result)}<br>
-                <small>${h.branch} | ${h.date}</small>
+                <small style="color:#b77cff;">${h.branch} | ${h.date}</small>
              </div>`
         ).join('');
     }
