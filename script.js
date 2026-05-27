@@ -364,14 +364,14 @@ function init() {
     initFont();
     renderButtons();
 
-    // Branch switching – preserve input
+    // Branch switching – preserve input (CRITICAL FIX)
     document.querySelectorAll('.branch-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             document.querySelectorAll('.branch-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             currentBranch = btn.getAttribute('data-branch');
             renderButtons();
-            // DO NOT clear exprInput or resultDisplay
+            // IMPORTANT: DO NOT clear exprInput or resultDisplay
         });
     });
 
