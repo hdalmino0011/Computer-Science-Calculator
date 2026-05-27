@@ -29,7 +29,6 @@ body {
     padding: 16px;
 }
 
-/* 12 Themes - applied via body class */
 body.theme-default { --bg-card: #1a1a2e; --accent: #7c3aed; }
 body.theme-obsidian { --bg-card: #2d2d2d; --accent: #a855f7; }
 body.theme-royalblue { --bg-card: #0f2a4a; --accent: #3b82f6; }
@@ -44,14 +43,15 @@ body.theme-sand { --bg-card: #4a3a1a; --accent: #fbbf24; }
 body.theme-cyan-night { --bg-card: #0a2535; --accent: #06b6d4; }
 
 .app-container {
-    max-width: 800px;
+    max-width: 500px;
     width: 100%;
     background: var(--bg-card);
     border-radius: 28px;
     box-shadow: 0 20px 40px rgba(0,0,0,0.4);
     overflow: hidden;
     border: 1px solid var(--accent);
-    min-height: 600px;
+    height: 90vh;
+    max-height: 850px;
     display: flex;
     flex-direction: column;
 }
@@ -63,6 +63,7 @@ body.theme-cyan-night { --bg-card: #0a2535; --accent: #06b6d4; }
     padding: 12px 20px;
     background: rgba(0,0,0,0.3);
     border-bottom: 1px solid var(--accent);
+    flex-shrink: 0;
 }
 
 .menu-btn {
@@ -84,7 +85,7 @@ body.theme-cyan-night { --bg-card: #0a2535; --accent: #06b6d4; }
 }
 
 .title {
-    font-size: 1.1rem;
+    font-size: 0.9rem;
     font-weight: bold;
     letter-spacing: 1px;
     color: var(--accent);
@@ -92,19 +93,19 @@ body.theme-cyan-night { --bg-card: #0a2535; --accent: #06b6d4; }
     flex: 1;
 }
 
-/* Calculator View */
 .calculator-view {
-    display: block;
+    display: flex;
+    flex-direction: column;
     flex: 1;
+    overflow: hidden;
 }
 
-/* Full Page Views (Themes, About, History, Font) */
 .full-page-view {
     flex: 1;
     display: flex;
     flex-direction: column;
     background: var(--bg-card);
-    min-height: 500px;
+    overflow: hidden;
 }
 
 .full-page-header {
@@ -114,6 +115,7 @@ body.theme-cyan-night { --bg-card: #0a2535; --accent: #06b6d4; }
     padding: 16px 20px;
     background: rgba(0,0,0,0.3);
     border-bottom: 1px solid var(--accent);
+    flex-shrink: 0;
 }
 
 .full-page-title {
@@ -128,21 +130,21 @@ body.theme-cyan-night { --bg-card: #0a2535; --accent: #06b6d4; }
     flex: 1;
 }
 
-/* Theme grid inside full page */
 .theme-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 15px;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
 }
 
 .theme-card {
     background: var(--btn-bg);
     border: 1px solid var(--border);
     border-radius: 16px;
-    padding: 12px;
+    padding: 14px;
     text-align: center;
     cursor: pointer;
     transition: 0.2s;
+    font-size: 0.85rem;
 }
 
 .theme-card:hover {
@@ -150,7 +152,6 @@ body.theme-cyan-night { --bg-card: #0a2535; --accent: #06b6d4; }
     transform: scale(1.02);
 }
 
-/* About content */
 .about-text {
     line-height: 1.6;
     font-size: 0.9rem;
@@ -163,12 +164,12 @@ body.theme-cyan-night { --bg-card: #0a2535; --accent: #06b6d4; }
     margin-bottom: 8px;
 }
 
-/* Font selector in full page */
 .font-selector-page {
     display: flex;
     flex-direction: column;
     gap: 12px;
 }
+
 .font-option {
     background: var(--btn-bg);
     border: 1px solid var(--border);
@@ -178,11 +179,11 @@ body.theme-cyan-night { --bg-card: #0a2535; --accent: #06b6d4; }
     cursor: pointer;
     font-size: 1rem;
 }
+
 .font-option:hover {
     background: var(--accent);
 }
 
-/* History list in full page */
 .history-list-page {
     display: flex;
     flex-direction: column;
@@ -190,6 +191,7 @@ body.theme-cyan-night { --bg-card: #0a2535; --accent: #06b6d4; }
     max-height: 500px;
     overflow-y: auto;
 }
+
 .history-item-page {
     background: var(--bg-display);
     border-radius: 12px;
@@ -197,13 +199,12 @@ body.theme-cyan-night { --bg-card: #0a2535; --accent: #06b6d4; }
     border-left: 3px solid var(--accent);
 }
 
-/* Step view */
 .steps-view {
     flex: 1;
     display: flex;
     flex-direction: column;
     background: var(--bg-card);
-    min-height: 500px;
+    overflow: hidden;
 }
 
 .steps-header {
@@ -213,6 +214,7 @@ body.theme-cyan-night { --bg-card: #0a2535; --accent: #06b6d4; }
     padding: 16px 20px;
     background: rgba(0,0,0,0.3);
     border-bottom: 1px solid var(--accent);
+    flex-shrink: 0;
 }
 
 .back-btn {
@@ -239,41 +241,42 @@ body.theme-cyan-night { --bg-card: #0a2535; --accent: #06b6d4; }
 
 .steps-expression {
     background: var(--bg-display);
-    margin: 20px;
-    padding: 16px;
+    margin: 16px;
+    padding: 14px;
     border-radius: 16px;
     font-family: monospace;
-    font-size: 1rem;
+    font-size: 0.9rem;
     border: 1px solid var(--border);
     word-wrap: break-word;
+    flex-shrink: 0;
 }
 
 .steps-result-full {
     background: var(--bg-display);
-    margin: 0 20px 20px 20px;
-    padding: 16px;
+    margin: 0 16px 16px 16px;
+    padding: 14px;
     border-radius: 16px;
-    font-size: 1.2rem;
+    font-size: 1.1rem;
     font-weight: bold;
     border-left: 4px solid var(--accent);
+    flex-shrink: 0;
 }
 
 .steps-list-full {
     background: var(--steps-bg);
-    margin: 0 20px 20px 20px;
-    padding: 16px;
+    margin: 0 16px 16px 16px;
+    padding: 14px;
     border-radius: 16px;
     border: 1px solid var(--border);
     flex: 1;
     overflow-y: auto;
-    max-height: 400px;
 }
 
 .step-item {
     font-family: monospace;
-    font-size: 0.85rem;
-    padding: 8px;
-    margin-bottom: 6px;
+    font-size: 0.8rem;
+    padding: 6px;
+    margin-bottom: 4px;
     border-bottom: 1px solid var(--border);
     color: var(--text-secondary);
 }
@@ -284,15 +287,27 @@ body.theme-cyan-night { --bg-card: #0a2535; --accent: #06b6d4; }
     margin-right: 12px;
 }
 
-/* Calculator buttons */
 .display-area {
-    padding: 20px;
+    padding: 16px;
+    flex-shrink: 0;
+}
+
+.branch-indicator {
+    text-align: center;
+    font-size: 0.7rem;
+    font-weight: bold;
+    color: var(--accent);
+    background: rgba(124, 58, 237, 0.15);
+    padding: 6px 14px;
+    border-radius: 20px;
+    margin-bottom: 10px;
+    letter-spacing: 1px;
 }
 
 .expression-input {
     background: var(--bg-display);
     border-radius: 16px;
-    margin-bottom: 12px;
+    margin-bottom: 10px;
     border: 1px solid var(--border);
 }
 
@@ -301,7 +316,7 @@ body.theme-cyan-night { --bg-card: #0a2535; --accent: #06b6d4; }
     background: transparent;
     border: none;
     font-size: 1rem;
-    padding: 12px 16px;
+    padding: 12px 14px;
     border-radius: 16px;
     color: var(--text-primary);
     outline: none;
@@ -311,7 +326,7 @@ body.theme-cyan-night { --bg-card: #0a2535; --accent: #06b6d4; }
 .result-box {
     background: var(--bg-display);
     border-radius: 16px;
-    padding: 8px 16px;
+    padding: 8px 14px;
     text-align: right;
     font-size: 1.2rem;
     font-weight: bold;
@@ -329,39 +344,51 @@ body.theme-cyan-night { --bg-card: #0a2535; --accent: #06b6d4; }
 }
 
 .fallback-message {
-    margin-top: 10px;
-    padding: 8px 16px;
+    margin-top: 8px;
+    padding: 8px 14px;
     background: rgba(124, 58, 237, 0.15);
     border-left: 3px solid var(--accent);
     border-radius: 8px;
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     color: var(--accent);
     font-style: italic;
 }
 
 .buttons-panel {
-    padding: 12px 16px 20px;
+    padding: 8px 14px 14px;
     background: rgba(0,0,0,0.2);
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
 }
 
 .button-grid {
     display: grid;
-    grid-template-columns: repeat(6, 1fr);
-    gap: 8px;
-    margin-bottom: 16px;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 7px;
+    margin-bottom: 12px;
+    overflow-y: auto;
+    flex: 1;
+    align-content: start;
+    padding: 2px;
 }
 
 .calc-btn {
     background: var(--btn-bg);
     border: 1px solid var(--border);
     border-radius: 12px;
-    padding: 12px 0;
+    padding: 11px 0;
     font-size: 0.8rem;
     font-weight: 600;
     color: var(--text-primary);
     cursor: pointer;
     transition: 0.05s linear;
     text-align: center;
+    min-height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .calc-btn:active {
@@ -371,8 +398,9 @@ body.theme-cyan-night { --bg-card: #0a2535; --accent: #06b6d4; }
 
 .action-buttons {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 10px;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    flex-shrink: 0;
 }
 
 .action-btn {
@@ -391,7 +419,6 @@ body.theme-cyan-night { --bg-card: #0a2535; --accent: #06b6d4; }
     border-color: var(--accent);
 }
 
-/* Drawer */
 .drawer {
     position: fixed;
     top: 0;
@@ -487,15 +514,30 @@ body.theme-cyan-night { --bg-card: #0a2535; --accent: #06b6d4; }
 }
 
 @media (max-width: 550px) {
+    .app-container {
+        height: 100vh;
+        max-height: none;
+        border-radius: 0;
+    }
     .button-grid {
         gap: 5px;
     }
     .calc-btn {
         font-size: 0.7rem;
         padding: 8px 0;
+        min-height: 38px;
     }
     .drawer {
         width: 85%;
         left: -85%;
+    }
+    .title {
+        font-size: 0.75rem;
+    }
+}
+
+@media (min-width: 551px) {
+    .app-container {
+        max-width: 480px;
     }
 }
