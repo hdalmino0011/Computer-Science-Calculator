@@ -27,26 +27,27 @@
         </div>
 
         <div class="buttons-panel">
+            <div class="branch-holder" id="branchSelector">
+                <button class="branch-btn active" data-branch="universal">Universal</button>
+                <button class="branch-btn" data-branch="arithmetic">Arithmetic</button>
+                <button class="branch-btn" data-branch="combinatorics">Combinatorics</button>
+                <button class="branch-btn" data-branch="logic">Logic</button>
+                <button class="branch-btn" data-branch="settheory">Set Theory</button>
+                <button class="branch-btn" data-branch="numbertheory">Number Theory</button>
+                <button class="branch-btn" data-branch="conversion">Conversion</button>
+                <button class="branch-btn" data-branch="matrix">Matrix</button>
+                <button class="branch-btn" data-branch="complex">Complex</button>
+            </div>
             <div id="dynamicButtons" class="button-grid"></div>
             <div class="action-buttons">
-                <button id="equalBtn" class="action-btn eval-btn">=</button>
-                <button id="clearBtn" class="action-btn">C</button>
-                <button id="backBtn" class="action-btn">⌫</button>
+                <button id="equalBtn" class="action-btn eval-btn">= EVALUATE</button>
+                <button id="clearBtn" class="action-btn">CLEAR</button>
+                <button id="backBtn" class="action-btn">DELETE</button>
             </div>
         </div>
     </div>
 
-    <!-- Full Page Content Views (hidden initially) -->
-    <div id="fullPageView" class="full-page-view" style="display: none;">
-        <div class="full-page-header">
-            <button id="closeFullPageBtn" class="back-btn">← BACK</button>
-            <div id="fullPageTitle" class="full-page-title"></div>
-            <div style="width: 60px;"></div>
-        </div>
-        <div id="fullPageContent" class="full-page-content"></div>
-    </div>
-
-    <!-- Step-by-Step Full View (hidden initially) -->
+    <!-- Step-by-Step Full View -->
     <div id="stepsView" class="steps-view" style="display: none;">
         <div class="steps-header">
             <button id="backToCalculatorBtn" class="back-btn">← BACK</button>
@@ -59,30 +60,43 @@
     </div>
 </div>
 
-<!-- Side Drawer (Menu) -->
+<!-- Side Drawer -->
 <div id="drawer" class="drawer">
     <button class="close-drawer" id="closeDrawerBtn">✖ CLOSE</button>
 
     <div class="drawer-section">
-        <div class="drawer-section-title">CALCULATOR MODES</div>
-        <div id="branchSelector" class="branch-selector">
-            <button class="branch-drawer-btn" data-branch="universal">Universal (Scientific)</button>
-            <button class="branch-drawer-btn" data-branch="arithmetic">Arithmetic & Bitwise</button>
-            <button class="branch-drawer-btn" data-branch="combinatorics">Combinatorics</button>
-            <button class="branch-drawer-btn" data-branch="logic">Logic & Boolean</button>
-            <button class="branch-drawer-btn" data-branch="settheory">Set Theory</button>
-            <button class="branch-drawer-btn" data-branch="numbertheory">Number Theory</button>
-            <button class="branch-drawer-btn" data-branch="conversion">Number System Conversion</button>
-            <button class="branch-drawer-btn" data-branch="matrix">Matrix Algebra</button>
-            <button class="branch-drawer-btn" data-branch="complex">Complex Numbers</button>
-        </div>
+        <div class="drawer-section-title">THEMES</div>
+        <div id="themesGallery" class="themes-gallery"></div>
     </div>
 
     <div class="drawer-section">
-        <button id="drawerThemesBtn" class="drawer-action-btn">THEMES (12)</button>
-        <button id="drawerFontBtn" class="drawer-action-btn">FONT</button>
-        <button id="drawerHistoryBtn" class="drawer-action-btn">HISTORY</button>
-        <button id="drawerAboutBtn" class="drawer-action-btn">ABOUT</button>
+        <div class="drawer-section-title">FONT</div>
+        <select id="fontSelector" class="font-select">
+            <option value="Times New Roman">Times New Roman</option>
+            <option value="Arial">Arial</option>
+            <option value="Courier New">Courier New</option>
+            <option value="Georgia">Georgia</option>
+            <option value="Verdana">Verdana</option>
+        </select>
+    </div>
+
+    <div class="drawer-section">
+        <div class="drawer-section-title">HISTORY</div>
+        <button id="drawerHistoryBtn" class="drawer-action-btn">VIEW HISTORY</button>
+        <button id="drawerClearHistoryBtn" class="drawer-action-btn" style="background:#ef4444;">CLEAR HISTORY</button>
+    </div>
+
+    <div class="drawer-section">
+        <div class="drawer-section-title">ABOUT</div>
+        <div class="about-content">
+            <strong>Hanz Dalmino</strong><br>
+            Cebu Technological University<br><br>
+            CS/IT Mathematics Tool – step-by-step evaluation.
+        </div>
+        <button id="drawerAboutBtn" class="drawer-action-btn" style="margin-top:8px;">FULL ABOUT</button>
+    </div>
+
+    <div class="drawer-section">
         <button id="drawerClearCacheBtn" class="drawer-action-btn">CLEAR CACHE</button>
         <button id="drawerExitBtn" class="drawer-action-btn">RESET SESSION</button>
     </div>
