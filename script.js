@@ -15,16 +15,16 @@ function escapeHtml(s) {
     return s.replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m]));
 }
 
-function fact(n) { 
-    if (n < 0) return NaN; 
-    let r = 1; 
-    for (let i = 2; i <= n; i++) r *= i; 
-    return r; 
+function fact(n) {
+    if (n < 0) return NaN;
+    let r = 1;
+    for (let i = 2; i <= n; i++) r *= i;
+    return r;
 }
 
-function gcd(a, b) { 
-    while (b) { let t = b; b = a % b; a = t; } 
-    return a; 
+function gcd(a, b) {
+    while (b) { let t = b; b = a % b; a = t; }
+    return a;
 }
 
 // ========== VIEW SWITCHING ==========
@@ -224,7 +224,7 @@ function evaluateUniversal(expr) {
     try {
         let clean = preprocessExpression(expr);
         if (!clean.trim()) return { result: '0', steps: 'Empty expression' };
-        
+
         // Handle conversion commands
         const convMatch = clean.match(/(DEC→BIN|BIN→DEC|DEC→HEX|HEX→DEC|DEC→OCT|OCT→DEC|BIN→HEX)\s+(\S+)/i);
         if (convMatch) {
@@ -254,7 +254,7 @@ function evaluateUniversal(expr) {
             let res = fact(n) / fact(n - r);
             return { result: res, steps: `P(${n},${r}) = ${n}!/(${n-r})! = ${res}` };
         }
-        
+
         // General evaluation
         let processed = clean.replace(/√/g, 'sqrt').replace(/\^/g, '**');
         processed = processed.replace(/(\d+)!/g, (_, n) => `fact(${n})`);
@@ -268,7 +268,7 @@ function evaluateUniversal(expr) {
         processed = processed.replace(/\bln\(/g, 'Math.log(');
         processed = processed.replace(/\bsqrt\(/g, 'Math.sqrt(');
         processed = processed.replace(/\babs\(/g, 'Math.abs(');
-        
+
         const fn = new Function('factorial', 'return (' + processed + ')');
         const result = fn(fact);
         return { result: result, steps: `Evaluated: ${processed} = ${result}` };
