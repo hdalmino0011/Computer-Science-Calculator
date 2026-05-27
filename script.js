@@ -8,29 +8,39 @@ const resultDisplay = document.getElementById('resultDisplay');
 const dynamicDiv = document.getElementById('dynamicButtons');
 const calculatorView = document.getElementById('calculatorView');
 const stepsView = document.getElementById('stepsView');
+const fullPageView = document.getElementById('fullPageView');
+const fullPageTitle = document.getElementById('fullPageTitle');
+const fullPageContent = document.getElementById('fullPageContent');
 
-// ========== HELPER FUNCTIONS ==========
+// ========== SYMBOL PRE-PROCESSOR ==========
+function preprocessExpression(expr) {
+    let processed = expr;
+    processed = processed.replace(/÷/g, '/');
+    processed = processed.replace(/×/g, '*');
+    processed = processed.replace(/≥/g, '>=');
+    processed = processed.replace(/≤/g, '<=');
+    processed = processed.replace(/≠/g, '!=');
+    processed = processed.replace(/∧/g, ' AND ');
+    processed = processed.replace(/∨/g, ' OR ');
+    processed = processed.replace(/¬/g, ' NOT ');
+    processed = processed.replace(/⊕/g, ' XOR ');
+    processed = processed.replace(/→/g, ' IMPLIES ');
+    processed = processed.replace(/↔/g, ' EQUIV ');
+    processed = processed.replace(/([^\s<>!])=([^\s=])/g, '$1==$2');
+    return processed;
+}
+
+// ========== UTILITIES ==========
 function escapeHtml(s) {
     if (!s) return '';
     return s.replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m]));
-}
-
-function fact(n) {
-    if (n < 0) return NaN;
-    let r = 1;
-    for (let i = 2; i <= n; i++) r *= i;
-    return r;
-}
-
-function gcd(a, b) {
-    while (b) { let t = b; b = a % b; a = t; }
-    return a;
 }
 
 // ========== VIEW SWITCHING ==========
 function showCalculatorView() {
     calculatorView.style.display = 'block';
     stepsView.style.display = 'none';
+    fullPageView.style.display = 'none';
 }
 
 function showStepsView(expression, result, steps) {
@@ -50,6 +60,15 @@ function showStepsView(expression, result, steps) {
     }
     calculatorView.style.display = 'none';
     stepsView.style.display = 'flex';
+    fullPageView.style.display = 'none';
+}
+
+function showFullPage(title, contentHtml) {
+    fullPageTitle.textContent = title;
+    fullPageContent.innerHTML = contentHtml;
+    calculatorView.style.display = 'none';
+    stepsView.style.display = 'none';
+    fullPageView.style.display = 'flex';
 }
 
 // ========== HISTORY ==========
@@ -83,179 +102,119 @@ function initTheme() {
     const saved = localStorage.getItem('activeTheme');
     if (saved && themes.includes(saved)) applyTheme(saved);
     else applyTheme('default');
-    renderThemesGallery();
-}
-function renderThemesGallery() {
-    const gallery = document.getElementById('themesGallery');
-    if (!gallery) return;
-    gallery.innerHTML = '';
-    themes.forEach((t, i) => {
-        const btn = document.createElement('div');
-        btn.className = 'theme-option';
-        btn.textContent = themeNames[i];
-        btn.style.backgroundColor = getThemeColor(t);
-        btn.style.color = '#fff';
-        btn.style.textShadow = '0 0 1px black';
-        btn.addEventListener('click', () => applyTheme(t));
-        gallery.appendChild(btn);
-    });
-}
-function getThemeColor(t) {
-    const c = { default: '#7c3aed', obsidian: '#a855f7', royalblue: '#3b82f6', orange: '#f97316', highcontrast: '#ffff00', forest: '#22c55e', crimson: '#ef4444', slate: '#64748b', purple: '#c084fc', midnight: '#60a5fa', sand: '#fbbf24', 'cyan-night': '#06b6d4' };
-    return c[t] || '#7c3aed';
 }
 
 // ========== FONTS ==========
 function initFont() {
     const saved = localStorage.getItem('appFont');
     if (saved) document.body.style.fontFamily = saved;
-    const sel = document.getElementById('fontSelector');
-    if (sel) {
-        sel.value = saved || 'Times New Roman';
-        sel.addEventListener('change', e => {
-            document.body.style.fontFamily = e.target.value;
-            localStorage.setItem('appFont', e.target.value);
-        });
-    }
+    else document.body.style.fontFamily = 'Times New Roman';
+}
+function setFont(font) {
+    document.body.style.fontFamily = font;
+    localStorage.setItem('appFont', font);
 }
 
-// ========== BUTTON LAYOUTS (ALL include numbers) ==========
+// ========== HELPER FUNCTIONS ==========
+function fact(n) { if (n < 0) return NaN; let r = 1; for (let i = 2; i <= n; i++) r *= i; return r; }
+function gcd(a, b) { while (b) { let t = b; b = a % b; a = t; } return a; }
+
+// ========== BUTTONS PER BRANCH ==========
 const universalButtons = [
     '7', '8', '9', '/', '(', ')', 'C',
     '4', '5', '6', '*', '^', '√', '!',
     '1', '2', '3', '-', '+', '%', 'abs',
     '0', '.', 'sin', 'cos', 'tan', 'log', 'ln',
-    'AND', 'OR', 'NOT', 'XOR', '=', '≠', '≥', '≤', '>', '<', '÷', '×', '∧', '∨',
-    'DEC→BIN', 'BIN→DEC', 'DEC→HEX', 'HEX→DEC', 'DEC→OCT', 'OCT→DEC', 'BIN→HEX'
+    'AND', 'OR', 'NOT', 'XOR', '=', '≠', '≥', '≤', '>', '<', '÷', '×', '∧', '∨'
 ];
 const arithmeticButtons = [
     '7', '8', '9', '/', '(', ')', 'C',
     '4', '5', '6', '*', '%', '^', '&',
     '1', '2', '3', '-', '+', '|', '~',
-    '0', '.', '<<', '>>', '√', '!', 'abs',
-    '≥', '≤', '≠', '==', '!=', '>', '<'
+    '0', '.', '<<', '>>', '√', '!', 'abs', '≥', '≤', '≠'
 ];
 const combinatoricsButtons = [
     '7', '8', '9', 'nCr', 'nPr', '(', ')', 'C',
-    '4', '5', '6', '!', ',', 'P', 'C',
-    '1', '2', '3', '0', '.', 'DEL'
+    '4', '5', '6', '!', 'C', 'P', ',',
+    '1', '2', '3', '0', '.'
 ];
 const logicButtons = [
-    '7', '8', '9', 'TRUE', 'FALSE', '(', ')', 'C',
-    '4', '5', '6', 'AND', 'OR', 'NOT', 'XOR',
-    '1', '2', '3', 'IMPLIES', 'EQUIV', '0', '.', 'DEL'
+    'TRUE', 'FALSE', 'AND', 'OR', 'NOT', 'XOR', 'IMPLIES', 'EQUIV', '(', ')', 'C'
 ];
 const settheoryButtons = [
-    '7', '8', '9', 'UNION', '∩', 'COMPLEMENT', 'C',
-    '4', '5', '6', '\\', 'SUBSET', 'POWERSET', '{',
-    '1', '2', '3', '}', ',', '0', '.', 'DEL'
+    'UNION', '∩', 'COMPLEMENT', '\\', 'SUBSET', 'POWERSET', '{', '}', ',', 'C'
 ];
 const numbertheoryButtons = [
     '7', '8', '9', 'gcd', 'lcm', 'mod', 'C',
     '4', '5', '6', 'prime?', 'factor', '(', ')',
-    '1', '2', '3', '0', '.', 'DEL'
+    '1', '2', '3', '0', '.'
 ];
 const conversionButtons = [
-    '7', '8', '9', 'DEC→BIN', 'BIN→DEC', 'DEC→HEX', 'C',
-    '4', '5', '6', 'HEX→DEC', 'DEC→OCT', 'OCT→DEC', 'BIN→HEX',
-    '1', '2', '3', '0', '.', 'DEL'
+    'DEC → BINARY', 'BIN → DECIMAL', 'DEC → HEX', 'HEX → DECIMAL',
+    'DEC → OCT', 'OCT → DECIMAL', 'BIN → HEX', 'CLEAR'
 ];
 const matrixButtons = [
-    '7', '8', '9', 'det2x2', 'add2x2', 'mul2x2', 'C',
-    '4', '5', '6', '[a b; c d]', '(', ')',
-    '1', '2', '3', '0', '.', 'DEL'
+    'det2x2', 'add2x2', 'mul2x2', '[a b; c d]', 'C'
 ];
 const complexButtons = [
-    '7', '8', '9', 're', 'im', 'conj', 'C',
-    '4', '5', '6', 'abs', 'arg', '+', '-',
-    '1', '2', '3', '*', '/', '0', '.', 'DEL'
+    're', 'im', 'conj', 'abs', 'arg', '+', '-', '*', '/', 'C'
 ];
 
+// Base number and operator buttons for all branches
+const BASE_BUTTONS = ['7','8','9','4','5','6','1','2','3','0','.','(',')','+','-','*','/'];
+
+function getFullButtons(branch) {
+    let specific = [];
+    switch(branch) {
+        case 'universal': specific = universalButtons; break;
+        case 'arithmetic': specific = arithmeticButtons; break;
+        case 'combinatorics': specific = combinatoricsButtons; break;
+        case 'logic': specific = logicButtons; break;
+        case 'settheory': specific = settheoryButtons; break;
+        case 'numbertheory': specific = numbertheoryButtons; break;
+        case 'conversion': specific = conversionButtons; break;
+        case 'matrix': specific = matrixButtons; break;
+        case 'complex': specific = complexButtons; break;
+        default: specific = universalButtons;
+    }
+    // Merge base buttons with branch-specific, ensuring uniqueness and 'C'/'CLEAR' at end
+    const merged = [...new Set([...BASE_BUTTONS, ...specific])];
+    // Ensure 'C' or 'CLEAR' is last if present
+    const clearBtn = merged.find(b => b === 'C' || b === 'CLEAR');
+    const filtered = merged.filter(b => b !== 'C' && b !== 'CLEAR');
+    if (clearBtn) filtered.push(clearBtn);
+    return filtered;
+}
+
 function renderButtons() {
-    let btns = [];
-    if (currentBranch === 'universal') btns = universalButtons;
-    else if (currentBranch === 'arithmetic') btns = arithmeticButtons;
-    else if (currentBranch === 'combinatorics') btns = combinatoricsButtons;
-    else if (currentBranch === 'logic') btns = logicButtons;
-    else if (currentBranch === 'settheory') btns = settheoryButtons;
-    else if (currentBranch === 'numbertheory') btns = numbertheoryButtons;
-    else if (currentBranch === 'conversion') btns = conversionButtons;
-    else if (currentBranch === 'matrix') btns = matrixButtons;
-    else btns = complexButtons;
+    const btns = getFullButtons(currentBranch);
 
     dynamicDiv.innerHTML = '';
     btns.forEach(label => {
         const btn = document.createElement('button');
         btn.className = 'calc-btn';
         btn.textContent = label;
-        if (label === 'C') {
+        if (label === 'C' || label === 'CLEAR') {
             btn.onclick = () => { exprInput.value = ''; resultDisplay.textContent = '0'; };
-        } else if (label === 'DEL') {
-            btn.onclick = () => { exprInput.value = exprInput.value.slice(0, -1); };
         } else {
             btn.onclick = () => {
-                exprInput.value += label;
+                if (currentBranch === 'conversion' && label.includes('→')) {
+                    exprInput.value = label + ' ';
+                } else {
+                    exprInput.value += label;
+                }
             };
         }
         dynamicDiv.appendChild(btn);
     });
 }
 
-// ========== SYMBOL PRE-PROCESSOR ==========
-function preprocessExpression(expr) {
-    let processed = expr;
-    processed = processed.replace(/÷/g, '/');
-    processed = processed.replace(/×/g, '*');
-    processed = processed.replace(/≥/g, '>=');
-    processed = processed.replace(/≤/g, '<=');
-    processed = processed.replace(/≠/g, '!=');
-    processed = processed.replace(/∧/g, ' AND ');
-    processed = processed.replace(/∨/g, ' OR ');
-    processed = processed.replace(/¬/g, ' NOT ');
-    processed = processed.replace(/⊕/g, ' XOR ');
-    processed = processed.replace(/→/g, ' IMPLIES ');
-    processed = processed.replace(/↔/g, ' EQUIV ');
-    processed = processed.replace(/([^\s<>!])=([^\s=])/g, '$1==$2');
-    return processed;
-}
-
 // ========== EVALUATION ENGINE ==========
 function evaluateUniversal(expr) {
     try {
         let clean = preprocessExpression(expr);
-        if (!clean.trim()) return { result: '0', steps: 'Empty expression' };
-
-        // Handle conversion commands
-        const convMatch = clean.match(/(DEC→BIN|BIN→DEC|DEC→HEX|HEX→DEC|DEC→OCT|OCT→DEC|BIN→HEX)\s+(\S+)/i);
-        if (convMatch) {
-            let type = convMatch[1].toUpperCase(), val = convMatch[2];
-            if (type.includes('DEC→BIN')) return { result: parseInt(val).toString(2), steps: `${val} in binary = ${parseInt(val).toString(2)}` };
-            if (type.includes('BIN→DEC')) return { result: parseInt(val, 2), steps: `Binary ${val} = ${parseInt(val, 2)} decimal` };
-            if (type.includes('DEC→HEX')) return { result: parseInt(val).toString(16).toUpperCase(), steps: `${val} in hex = ${parseInt(val).toString(16).toUpperCase()}` };
-            if (type.includes('HEX→DEC')) return { result: parseInt(val, 16), steps: `Hex ${val} = ${parseInt(val, 16)} decimal` };
-            if (type.includes('DEC→OCT')) return { result: parseInt(val).toString(8), steps: `${val} in octal = ${parseInt(val).toString(8)}` };
-            if (type.includes('OCT→DEC')) return { result: parseInt(val, 8), steps: `Octal ${val} = ${parseInt(val, 8)} decimal` };
-            if (type.includes('BIN→HEX')) {
-                let dec = parseInt(val, 2);
-                return { result: dec.toString(16).toUpperCase(), steps: `Binary ${val} → decimal ${dec} → hex ${dec.toString(16).toUpperCase()}` };
-            }
-        }
-
-        // Handle combinatorics
-        const ncrMatch = clean.match(/nCr\s*\(?\s*(\d+)\s*,\s*(\d+)/i);
-        if (ncrMatch) {
-            let n = parseInt(ncrMatch[1]), r = parseInt(ncrMatch[2]);
-            let res = fact(n) / (fact(r) * fact(n - r));
-            return { result: res, steps: `C(${n},${r}) = ${n}!/(${r}!(${n-r})!) = ${res}` };
-        }
-        const nprMatch = clean.match(/nPr\s*\(?\s*(\d+)\s*,\s*(\d+)/i);
-        if (nprMatch) {
-            let n = parseInt(nprMatch[1]), r = parseInt(nprMatch[2]);
-            let res = fact(n) / fact(n - r);
-            return { result: res, steps: `P(${n},${r}) = ${n}!/(${n-r})! = ${res}` };
-        }
-
-        // General evaluation
+        if (!clean) return { result: '0', steps: 'Empty expression' };
+        
         let processed = clean.replace(/√/g, 'sqrt').replace(/\^/g, '**');
         processed = processed.replace(/(\d+)!/g, (_, n) => `fact(${n})`);
         processed = processed.replace(/(\d+)%/g, (_, n) => `(${n}/100)`);
@@ -268,7 +227,7 @@ function evaluateUniversal(expr) {
         processed = processed.replace(/\bln\(/g, 'Math.log(');
         processed = processed.replace(/\bsqrt\(/g, 'Math.sqrt(');
         processed = processed.replace(/\babs\(/g, 'Math.abs(');
-
+        
         const fn = new Function('factorial', 'return (' + processed + ')');
         const result = fn(fact);
         return { result: result, steps: `Evaluated: ${processed} = ${result}` };
@@ -277,14 +236,160 @@ function evaluateUniversal(expr) {
     }
 }
 
-// Main evaluate
+function evaluateCombinatorics(expr) {
+    let u = expr.toUpperCase();
+    let m = u.match(/NCR\s*\(?\s*(\d+)\s*,\s*(\d+)/i);
+    if (m) {
+        let n = parseInt(m[1]), r = parseInt(m[2]);
+        let res = fact(n) / (fact(r) * fact(n - r));
+        return { result: res, steps: `C(${n},${r}) = ${n}!/(${r}!(${n-r})!) = ${res}` };
+    }
+    m = u.match(/NPR\s*\(?\s*(\d+)\s*,\s*(\d+)/i);
+    if (m) {
+        let n = parseInt(m[1]), r = parseInt(m[2]);
+        let res = fact(n) / fact(n - r);
+        return { result: res, steps: `P(${n},${r}) = ${n}!/(${n-r})! = ${res}` };
+    }
+    m = u.match(/(\d+)!/);
+    if (m) {
+        let n = parseInt(m[1]);
+        let res = fact(n);
+        return { result: res, steps: `${n}! = ${res}` };
+    }
+    return { result: 'Error', steps: 'Use nCr(n,r), nPr(n,r), or n!' };
+}
+
+function evaluateLogic(expr) {
+    let clean = preprocessExpression(expr).replace(/\s/g, '').toUpperCase();
+    if (!clean) return { result: 'Error', steps: 'Empty' };
+    try {
+        let processed = clean.replace(/AND/g, '&&').replace(/OR/g, '||').replace(/NOT/g, '!');
+        processed = processed.replace(/XOR/g, '!==').replace(/IMPLIES/g, '<=').replace(/EQUIV/g, '===');
+        processed = processed.replace(/TRUE/g, 'true').replace(/FALSE/g, 'false');
+        const fn = new Function('return (' + processed + ')');
+        const result = fn();
+        return { result: result, steps: `Evaluated: ${processed} = ${result}` };
+    } catch (e) {
+        return { result: 'Error', steps: 'Invalid logic expression' };
+    }
+}
+
+function evaluateSetTheory(expr) {
+    let u = expr.toUpperCase();
+    if (u.includes('UNION')) return { result: 'A ∪ B', steps: 'Union: elements in A or B' };
+    if (u.includes('∩')) return { result: 'A ∩ B', steps: 'Intersection: elements in both' };
+    if (u.includes('COMPLEMENT')) return { result: 'A\'', steps: 'Complement: elements not in A' };
+    if (u.includes('\\')) return { result: 'A \\ B', steps: 'Difference: A minus B' };
+    if (u.includes('SUBSET')) return { result: 'A ⊆ B', steps: 'Subset: all A in B' };
+    if (u.includes('POWERSET')) return { result: 'P(A)', steps: 'Set of all subsets' };
+    return { result: 'Error', steps: 'No set operation detected; trying universal evaluation...' };
+}
+
+function evaluateNumberTheory(expr) {
+    let u = expr.toLowerCase();
+    let m = u.match(/gcd\s*\(?\s*(\d+)\s*,\s*(\d+)/);
+    if (m) {
+        let a = parseInt(m[1]), b = parseInt(m[2]);
+        let g = gcd(a, b);
+        return { result: g, steps: `GCD(${a},${b}) = ${g}` };
+    }
+    m = u.match(/lcm\s*\(?\s*(\d+)\s*,\s*(\d+)/);
+    if (m) {
+        let a = parseInt(m[1]), b = parseInt(m[2]);
+        let l = a * b / gcd(a, b);
+        return { result: l, steps: `LCM(${a},${b}) = ${l}` };
+    }
+    m = u.match(/mod\s*\(?\s*(\d+)\s*,\s*(\d+)/);
+    if (m) return { result: parseInt(m[1]) % parseInt(m[2]), steps: `${m[1]} mod ${m[2]} = ${parseInt(m[1]) % parseInt(m[2])}` };
+    m = u.match(/prime\?\s*(\d+)/);
+    if (m) {
+        let n = parseInt(m[1]);
+        let isPrime = n > 1 && ![...Array(Math.floor(Math.sqrt(n))).keys()].slice(2).some(i => n % i === 0);
+        return { result: isPrime, steps: `${n} is ${isPrime ? 'prime' : 'not prime'}` };
+    }
+    return { result: 'Error', steps: 'Use gcd(a,b), lcm(a,b), mod(a,b), prime?(n)' };
+}
+
+function evaluateConversion(expr) {
+    let m = expr.match(/(DEC → BINARY|BIN → DECIMAL|DEC → HEX|HEX → DECIMAL|DEC → OCT|OCT → DECIMAL|BIN → HEX)\s+(\S+)/i);
+    if (!m) return { result: 'Error', steps: 'Format: DEC → BINARY 255' };
+    let type = m[1].toUpperCase(), val = m[2];
+    try {
+        if (type.includes('DEC → BINARY')) return { result: parseInt(val).toString(2), steps: `Convert ${val} to binary = ${parseInt(val).toString(2)}` };
+        if (type.includes('BIN → DECIMAL')) return { result: parseInt(val, 2), steps: `Binary ${val} to decimal = ${parseInt(val, 2)}` };
+        if (type.includes('DEC → HEX')) return { result: parseInt(val).toString(16).toUpperCase(), steps: `Convert ${val} to hex = ${parseInt(val).toString(16).toUpperCase()}` };
+        if (type.includes('HEX → DECIMAL')) return { result: parseInt(val, 16), steps: `Hex ${val} to decimal = ${parseInt(val, 16)}` };
+        if (type.includes('DEC → OCT')) return { result: parseInt(val).toString(8), steps: `Convert ${val} to octal = ${parseInt(val).toString(8)}` };
+        if (type.includes('OCT → DECIMAL')) return { result: parseInt(val, 8), steps: `Octal ${val} to decimal = ${parseInt(val, 8)}` };
+        if (type.includes('BIN → HEX')) {
+            let dec = parseInt(val, 2);
+            return { result: dec.toString(16).toUpperCase(), steps: `Binary to decimal = ${dec}, then hex = ${dec.toString(16).toUpperCase()}` };
+        }
+    } catch (e) { return { result: 'Error', steps: 'Invalid input' }; }
+    return { result: 'Error', steps: 'Unknown conversion' };
+}
+
+function evaluateMatrix(expr) {
+    let u = expr.toLowerCase();
+    let m = u.match(/det2x2\s*\(?\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
+    if (m) {
+        let a = parseInt(m[1]), b = parseInt(m[2]), c = parseInt(m[3]), d = parseInt(m[4]);
+        let det = a * d - b * c;
+        return { result: det, steps: `det([${a} ${b}; ${c} ${d}]) = ${a}*${d} - ${b}*${c} = ${det}` };
+    }
+    return { result: 'Error', steps: 'No matrix operation detected; trying universal evaluation...' };
+}
+
+function evaluateComplex(expr) {
+    // Complex evaluator is placeholder – return error so universal can take over
+    return { result: 'Error', steps: 'Complex mode placeholder; trying universal evaluation...' };
+}
+
+function evaluateArithmetic(expr) {
+    return evaluateUniversal(expr);
+}
+
+// ========== MAIN EVALUATE WITH FALLBACK ==========
 function evaluate() {
     let raw = exprInput.value.trim();
     if (!raw) {
         resultDisplay.textContent = '0';
         return;
     }
-    let res = evaluateUniversal(raw);
+    let res;
+    // First, try branch-specific evaluator
+    if (currentBranch === 'universal') {
+        res = evaluateUniversal(raw);
+    } else if (currentBranch === 'arithmetic') {
+        res = evaluateArithmetic(raw);
+    } else if (currentBranch === 'combinatorics') {
+        res = evaluateCombinatorics(raw);
+    } else if (currentBranch === 'logic') {
+        res = evaluateLogic(raw);
+    } else if (currentBranch === 'settheory') {
+        res = evaluateSetTheory(raw);
+    } else if (currentBranch === 'numbertheory') {
+        res = evaluateNumberTheory(raw);
+    } else if (currentBranch === 'conversion') {
+        res = evaluateConversion(raw);
+    } else if (currentBranch === 'matrix') {
+        res = evaluateMatrix(raw);
+    } else if (currentBranch === 'complex') {
+        res = evaluateComplex(raw);
+    } else {
+        res = evaluateUniversal(raw);
+    }
+
+    // If branch-specific failed, fallback to universal evaluation
+    if (res.result === 'Error' || (typeof res.result === 'string' && res.result.startsWith('Error'))) {
+        const fallbackRes = evaluateUniversal(raw);
+        // Only use fallback if it succeeds; otherwise keep original error
+        if (fallbackRes.result !== 'Error' && !(typeof fallbackRes.result === 'string' && fallbackRes.result.startsWith('Error'))) {
+            res = fallbackRes;
+            res.steps = '[Fallback to Universal] ' + res.steps;
+        }
+    }
+
     let resStr = res.result.toString();
     resultDisplay.textContent = resStr;
     addHistory(raw, resStr, res.steps, currentBranch);
@@ -314,47 +419,89 @@ function clearCache() {
     }
 }
 
-function showHistoryFull() {
-    const modal = document.getElementById('historyModal');
-    const listDiv = document.getElementById('historyList');
-    if (historyEntries.length === 0) {
-        listDiv.innerHTML = '<div class="history-item">No history</div>';
-    } else {
-        listDiv.innerHTML = historyEntries.map(h => `
-            <div class="history-item">
-                <div class="history-expr">${escapeHtml(h.expr)}</div>
-                <div class="history-result">= ${escapeHtml(h.result)}</div>
-                <div class="history-meta" style="font-size:0.7rem; opacity:0.6;">${h.branch} | ${h.date}</div>
-            </div>
-        `).join('');
-    }
-    modal.style.display = 'block';
+function showThemesPage() {
+    let html = '<div class="theme-grid">';
+    themes.forEach((t, i) => {
+        html += `<div class="theme-card" data-theme="${t}" style="background:${getThemeColor(t)}; color:white; padding:12px; margin:5px; border-radius:12px; text-align:center; cursor:pointer;">${themeNames[i]}</div>`;
+    });
+    html += '</div>';
+    showFullPage('THEMES (12)', html);
+    document.querySelectorAll('.theme-card').forEach(card => {
+        card.addEventListener('click', () => {
+            applyTheme(card.dataset.theme);
+            showCalculatorView();
+        });
+    });
 }
 
-function showAboutFull() {
-    const aboutText = `Developed by Hanz Dalmino
-Cebu Technological University Main Campus
+function showFontPage() {
+    const fonts = ['Times New Roman', 'Arial', 'Courier New', 'Georgia', 'Verdana'];
+    let html = '<div class="font-selector-page">';
+    fonts.forEach(f => {
+        html += `<div class="font-option" data-font="${f}" style="background:var(--btn-bg); padding:12px; margin:8px; border-radius:30px; text-align:center; cursor:pointer;">${f}</div>`;
+    });
+    html += '</div>';
+    showFullPage('FONT', html);
+    document.querySelectorAll('.font-option').forEach(opt => {
+        opt.addEventListener('click', () => {
+            setFont(opt.dataset.font);
+            showCalculatorView();
+        });
+    });
+}
 
-PURPOSE:
-Designed for Computer Science, IT, and Computer Engineering students to assist with discrete mathematics, logic, set theory, number theory, combinatorics, matrix algebra, complex numbers, number system conversions, and advanced arithmetic with step-by-step evaluation.
+function showHistoryPage() {
+    if (historyEntries.length === 0) {
+        showFullPage('HISTORY', '<div class="history-item-page">No history yet</div>');
+        return;
+    }
+    let html = '<div class="history-list-page">';
+    historyEntries.forEach(h => {
+        html += `<div class="history-item-page" style="background:var(--bg-display); border-radius:12px; padding:10px; margin-bottom:8px; border-left:3px solid var(--accent);">
+                    <div class="history-expr" style="font-family:monospace; font-weight:bold;">${escapeHtml(h.expr)}</div>
+                    <div class="history-result" style="color:var(--accent);">= ${escapeHtml(h.result)}</div>
+                    <div class="history-meta" style="font-size:0.7rem; opacity:0.6;">${h.branch} | ${h.date}</div>
+                 </div>`;
+    });
+    html += '</div><button id="clearHistoryFromPage" class="action-btn" style="margin-top:15px; background:#ef4444; border:none; padding:10px; border-radius:30px; color:white; cursor:pointer;">CLEAR ALL HISTORY</button>';
+    showFullPage('HISTORY', html);
+    document.getElementById('clearHistoryFromPage')?.addEventListener('click', () => {
+        clearHistory();
+        showHistoryPage();
+    });
+}
 
-FEATURES:
-• Universal expression evaluation (arithmetic, relational, logical, bitwise)
-• Set theory (union, intersection, complement, subset, powerset)
-• Combinatorics (nCr, nPr, factorial)
-• Number theory (GCD, LCM, modulo, primality)
-• Number system conversions (binary, decimal, hex, octal)
-• Matrix determinant (2x2)
-• Complex number operations
-• Trigonometric and logarithmic functions
-• 12 color themes
-• Adjustable font
-• Calculation history with local storage
-• Step-by-step detailed evaluation
-• Responsive design for desktop and mobile
+function showAboutPage() {
+    const aboutHtml = `
+        <div class="about-text">
+            <h3>Developed by Hanz Dalmino</h3>
+            <p>Cebu Technological University Main Campus</p>
+            <h3>Purpose</h3>
+            <p>This Universal CS Calculator is specifically designed for students and professionals in <strong>Computer Science, Information Technology, Computer Engineering, and related fields</strong>. It provides step-by-step evaluation for a wide range of mathematical concepts essential to these disciplines.</p>
+            <h3>Topics Covered</h3>
+            <ul>
+                <li>Arithmetic & Bitwise Operations</li>
+                <li>Relational and Logical Operators</li>
+                <li>Combinatorics (nCr, nPr, Factorials)</li>
+                <li>Boolean Algebra and Logic Gates</li>
+                <li>Set Theory (Union, Intersection, Complement, Subset)</li>
+                <li>Number Theory (GCD, LCM, Modulo, Primality)</li>
+                <li>Number System Conversions (Binary, Decimal, Hex, Octal)</li>
+                <li>Matrix Algebra (Determinants, basic operations)</li>
+                <li>Complex Numbers</li>
+                <li>Scientific Functions (sin, cos, tan, log, ln, sqrt, abs)</li>
+            </ul>
+            <h3>Why This Calculator?</h3>
+            <p>Unlike simple calculators, this tool shows every step of the evaluation, helping students understand the process behind the answer. It handles complex expressions mixing arithmetic, bitwise, relational, and logical operators in a single line.</p>
+            <p>It is also fully customizable with 12 themes and multiple fonts, and it works on desktop, tablet, and mobile devices.</p>
+        </div>
+    `;
+    showFullPage('ABOUT', aboutHtml);
+}
 
-All operations show each step clearly.`;
-    alert(aboutText);
+function getThemeColor(t) {
+    const c = { default: '#7c3aed', obsidian: '#a855f7', royalblue: '#3b82f6', orange: '#f97316', highcontrast: '#ffff00', forest: '#22c55e', crimson: '#ef4444', slate: '#64748b', purple: '#c084fc', midnight: '#60a5fa', sand: '#fbbf24', 'cyan-night': '#06b6d4' };
+    return c[t] || '#7c3aed';
 }
 
 // ========== INITIALIZATION ==========
@@ -364,16 +511,23 @@ function init() {
     initFont();
     renderButtons();
 
-    // Branch switching – preserve input (CRITICAL FIX)
-    document.querySelectorAll('.branch-btn').forEach(btn => {
+    document.querySelectorAll('.branch-drawer-btn').forEach(btn => {
         btn.addEventListener('click', () => {
-            document.querySelectorAll('.branch-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.branch-drawer-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             currentBranch = btn.getAttribute('data-branch');
             renderButtons();
-            // IMPORTANT: DO NOT clear exprInput or resultDisplay
+            // DO NOT clear input or result – keep expression intact
+            toggleDrawer(false);
         });
     });
+
+    document.getElementById('drawerThemesBtn').onclick = () => { toggleDrawer(false); showThemesPage(); };
+    document.getElementById('drawerFontBtn').onclick = () => { toggleDrawer(false); showFontPage(); };
+    document.getElementById('drawerHistoryBtn').onclick = () => { toggleDrawer(false); showHistoryPage(); };
+    document.getElementById('drawerAboutBtn').onclick = () => { toggleDrawer(false); showAboutPage(); };
+    document.getElementById('drawerClearCacheBtn').onclick = () => { toggleDrawer(false); clearCache(); };
+    document.getElementById('drawerExitBtn').onclick = () => { toggleDrawer(false); resetSession(); };
 
     document.getElementById('equalBtn').onclick = evaluate;
     document.getElementById('clearBtn').onclick = () => { exprInput.value = ''; resultDisplay.textContent = '0'; };
@@ -381,16 +535,14 @@ function init() {
     document.getElementById('menuToggleBtn').onclick = () => toggleDrawer(true);
     document.getElementById('closeDrawerBtn').onclick = () => toggleDrawer(false);
     document.getElementById('overlay').onclick = () => toggleDrawer(false);
+    document.getElementById('closeFullPageBtn').onclick = () => showCalculatorView();
     document.getElementById('backToCalculatorBtn').onclick = () => showCalculatorView();
 
-    document.getElementById('drawerHistoryBtn').onclick = () => { toggleDrawer(false); showHistoryFull(); };
-    document.getElementById('drawerClearHistoryBtn').onclick = () => { clearHistory(); alert('History cleared'); toggleDrawer(false); };
-    document.getElementById('drawerAboutBtn').onclick = () => { toggleDrawer(false); showAboutFull(); };
-    document.getElementById('drawerClearCacheBtn').onclick = () => { toggleDrawer(false); clearCache(); };
-    document.getElementById('drawerExitBtn').onclick = () => { toggleDrawer(false); resetSession(); };
-    document.getElementById('closeHistoryBtn').onclick = () => document.getElementById('historyModal').style.display = 'none';
-
     exprInput.addEventListener('keypress', e => { if (e.key === 'Enter') evaluate(); });
+
+    document.querySelectorAll('.branch-drawer-btn').forEach(btn => {
+        if (btn.getAttribute('data-branch') === currentBranch) btn.classList.add('active');
+    });
 }
 
 init();
