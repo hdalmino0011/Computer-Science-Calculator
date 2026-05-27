@@ -13,56 +13,85 @@
         <div class="title">CS DISCRETE CALC</div>
         <div class="theme-quick" id="quickThemeRow"></div>
     </div>
+    
     <div class="display-area">
         <div class="expression-input">
             <input type="text" id="exprInput" placeholder="Enter expression / conversion ..." autocomplete="off">
         </div>
-        <div class="result-box" id="resultDisplay">Result: </div>
-        <div class="steps-box" id="stepsDisplay">Step-by-step will appear here</div>
+        <div class="result-box">
+            <span class="result-label">Result:</span>
+            <span id="resultDisplay">0</span>
+        </div>
+        <div class="steps-box">
+            <div class="steps-label">Step-by-Step:</div>
+            <div id="stepsDisplay">Ready</div>
+        </div>
     </div>
 
     <div class="buttons-panel">
-        <div class="branch-holder" id="branchSelector">
-            <button class="branch-btn" data-branch="arithmetic">Arithmetic & Bitwise</button>
+        <div class="branch-holder">
+            <button class="branch-btn active" data-branch="arithmetic">Arithmetic & Bitwise</button>
             <button class="branch-btn" data-branch="logic">Logic & Discrete</button>
             <button class="branch-btn" data-branch="conversion">Number Conversion</button>
         </div>
         <div id="dynamicButtons" class="button-grid"></div>
-        <div style="margin-top: 12px; display: flex; gap: 8px;">
-            <button id="equalBtn" class="calc-btn wide-btn" style="background: var(--accent); color:white;">= EVAL</button>
-            <button id="clearBtn" class="calc-btn">C</button>
-            <button id="backBtn" class="calc-btn">DEL</button>
-            <button id="historyShowBtn" class="calc-btn">HIST</button>
+        <div class="action-buttons">
+            <button id="equalBtn" class="action-btn eval-btn">= EVALUATE</button>
+            <button id="clearBtn" class="action-btn">CLEAR</button>
+            <button id="backBtn" class="action-btn">DELETE</button>
+            <button id="historyShowBtn" class="action-btn">HISTORY</button>
         </div>
     </div>
 </div>
 
 <!-- Side Drawer -->
 <div id="drawer" class="drawer">
-    <button class="close-drawer" id="closeDrawerBtn">X Close Menu</button>
-    <button id="drawerSettingsBtn">Settings and Themes</button>
-    <button id="drawerThemesBtn">Theme Gallery</button>
-    <button id="drawerAboutBtn">About Developer</button>
-    <button id="drawerClearCacheBtn">Clear Cache (History and Data)</button>
-    <button id="drawerExitBtn">Exit / Reset Session</button>
-    <div style="margin-top: 1rem;">
-        <label>Change Font (5 options)</label>
-        <select id="fontSelector" class="font-select">
-            <option value="Times New Roman">Times New Roman</option>
-            <option value="Arial">Arial</option>
-            <option value="Courier New">Courier New</option>
-            <option value="Georgia">Georgia</option>
-            <option value="Verdana">Verdana</option>
-        </select>
+    <button class="close-drawer" id="closeDrawerBtn">✖ CLOSE MENU</button>
+    <div class="drawer-section">
+        <div class="drawer-section-title">SETTINGS</div>
+        <button id="drawerThemesBtn">🎨 Theme Gallery (12 Themes)</button>
+        <div class="font-selector">
+            <label>Font Family:</label>
+            <select id="fontSelector">
+                <option value="Times New Roman">Times New Roman</option>
+                <option value="Arial">Arial</option>
+                <option value="Courier New">Courier New</option>
+                <option value="Georgia">Georgia</option>
+                <option value="Verdana">Verdana</option>
+            </select>
+        </div>
+    </div>
+    <div class="drawer-section">
+        <div class="drawer-section-title">ABOUT</div>
+        <div id="aboutContent" class="about-content">
+            <strong>Developed by Hanz Dalmino</strong><br>
+            Cebu Technological University Main Campus<br><br>
+            <strong>Purpose:</strong> This calculator is designed for Computer Science and IT students to assist with discrete mathematics, logic operations, binary/hex/octal conversions, and complex arithmetic. Every calculation shows step-by-step evaluation for better understanding.<br><br>
+            <strong>Features:</strong><br>
+            • Arithmetic & Bitwise Operations<br>
+            • Logic Gates & Discrete Math<br>
+            • Number System Conversions<br>
+            • 12 Colorful Themes<br>
+            • Calculation History<br>
+            • Step-by-Step Display<br>
+            • Desktop & Mobile Responsive
+        </div>
+    </div>
+    <div class="drawer-section">
+        <button id="drawerClearCacheBtn">🗑️ Clear Cache & History</button>
+        <button id="drawerExitBtn">🔄 Reset Session</button>
     </div>
 </div>
 <div id="overlay" class="overlay"></div>
 
 <!-- History Modal -->
-<div id="historyModal" class="history-modal" style="display:none;">
-    <h3>History (Previous equations)</h3>
-    <div id="historyList"></div>
-    <button id="closeHistoryBtn">Close</button>
+<div id="historyModal" class="history-modal">
+    <div class="history-header">
+        <h3>Calculation History</h3>
+        <button id="closeHistoryBtn" class="close-modal-btn">✖</button>
+    </div>
+    <div id="historyList" class="history-list">No history yet</div>
+    <button id="clearHistoryBtn" class="clear-history-btn">Clear All History</button>
 </div>
 
 <script src="script.js"></script>
