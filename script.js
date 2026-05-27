@@ -6,6 +6,7 @@ let historyEntries = [];
 const exprInput = document.getElementById('exprInput');
 const resultDisplay = document.getElementById('resultDisplay');
 const fallbackMessage = document.getElementById('fallbackMessage');
+const branchIndicator = document.getElementById('branchIndicator');
 const dynamicDiv = document.getElementById('dynamicButtons');
 const calculatorView = document.getElementById('calculatorView');
 const stepsView = document.getElementById('stepsView');
@@ -13,17 +14,25 @@ const fullPageView = document.getElementById('fullPageView');
 const fullPageTitle = document.getElementById('fullPageTitle');
 const fullPageContent = document.getElementById('fullPageContent');
 
+// Branch display names
+const branchNames = {
+    'universal': 'Universal (Scientific)',
+    'arithmetic': 'Arithmetic & Bitwise',
+    'combinatorics': 'Combinatorics',
+    'logic': 'Logic & Boolean',
+    'settheory': 'Set Theory',
+    'numbertheory': 'Number Theory',
+    'conversion': 'Number System Conversion',
+    'matrix': 'Matrix Algebra',
+    'complex': 'Complex Numbers'
+};
+
 // ========== SYMBOL PRE-PROCESSOR ==========
 function preprocessExpression(expr) {
     let processed = expr;
-    // First, normalize programming-style logical operators to word forms
-    // Handle && (but avoid replacing inside strings; simple approach)
     processed = processed.replace(/&&/g, ' AND ');
     processed = processed.replace(/\|\|/g, ' OR ');
-    // Handle ! as NOT, but preserve !=
     processed = processed.replace(/!(?!=)/g, ' NOT ');
-    
-    // Now replace mathematical/logic symbols
     processed = processed.replace(/÷/g, '/');
     processed = processed.replace(/×/g, '*');
     processed = processed.replace(/≥/g, '>=');
@@ -35,7 +44,6 @@ function preprocessExpression(expr) {
     processed = processed.replace(/⊕/g, ' XOR ');
     processed = processed.replace(/→/g, ' IMPLIES ');
     processed = processed.replace(/↔/g, ' EQUIV ');
-    // Convert standalone '=' to '==' (only if not preceded by < > ! and not followed by = or whitespace)
     processed = processed.replace(/([^\s<>!])=([^\s=])/g, '$1==$2');
     return processed;
 }
@@ -48,7 +56,7 @@ function escapeHtml(s) {
 
 // ========== VIEW SWITCHING ==========
 function showCalculatorView() {
-    calculatorView.style.display = 'block';
+    calculatorView.style.display = 'flex';
     stepsView.style.display = 'none';
     fullPageView.style.display = 'none';
 }
@@ -149,10 +157,13 @@ const combinatoricsButtons = [
     '1', '2', '3', '0', '.'
 ];
 const logicButtons = [
-    'TRUE', 'FALSE', 'AND', 'OR', 'NOT', 'XOR', 'IMPLIES', 'EQUIV', '(', ')', 'C'
+    'TRUE', 'FALSE', 'AND', 'OR', 'NOT', 'XOR', 'IMPLIES', 'EQUIV', '(', ')', 'C',
+    '7', '8', '9', '4', '5', '6', '1', '2', '3', '0', '.',
+    '+', '-', '*', '/', '^', '==', '!=', '>=', '<=', '>', '<'
 ];
 const settheoryButtons = [
-    'UNION', '∩', 'COMPLEMENT', '\\', 'SUBSET', 'POWERSET', '{', '}', ',', 'C'
+    'UNION', '∩', 'COMPLEMENT', '\\', 'SUBSET', 'POWERSET', '{', '}', ',', 'C',
+    '7', '8', '9', '4', '5', '6', '1', '2', '3', '0', '.'
 ];
 const numbertheoryButtons = [
     '7', '8', '9', 'gcd', 'lcm', 'mod', 'C',
@@ -195,7 +206,6 @@ function getFullButtons(branch) {
 
 function renderButtons() {
     const btns = getFullButtons(currentBranch);
-
     dynamicDiv.innerHTML = '';
     btns.forEach(label => {
         const btn = document.createElement('button');
@@ -214,6 +224,10 @@ function renderButtons() {
         }
         dynamicDiv.appendChild(btn);
     });
+}
+
+function updateBranchIndicator() {
+    branchIndicator.textContent = branchNames[currentBranch] || 'Universal (Scientific)';
 }
 
 // ========== STEP-BY-STEP BREAKDOWN GENERATOR ==========
@@ -248,7 +262,7 @@ function generateSteps(expr) {
     
     if (subExprs.length > 0) {
         steps.push(`Found ${subExprs.length} sub-expression(s) in parentheses:`);
-        subExprs.forEach((sub, i) => {
+        subExprs.forEach((sub) => {
             try {
                 const fn = new Function('factorial', 'return (' + sub + ')');
                 const val = fn(fact);
@@ -322,18 +336,8 @@ function evaluateCombinatorics(expr) {
 }
 
 function evaluateLogic(expr) {
-    let clean = preprocessExpression(expr).replace(/\s/g, '').toUpperCase();
-    if (!clean) return { result: 'Error', steps: 'Empty' };
-    try {
-        let processed = clean.replace(/AND/g, '&&').replace(/OR/g, '||').replace(/NOT/g, '!');
-        processed = processed.replace(/XOR/g, '!==').replace(/IMPLIES/g, '<=').replace(/EQUIV/g, '===');
-        processed = processed.replace(/TRUE/g, 'true').replace(/FALSE/g, 'false');
-        const fn = new Function('return (' + processed + ')');
-        const result = fn();
-        return { result: result, steps: `Evaluated: ${processed} = ${result}` };
-    } catch (e) {
-        return { result: 'Error', steps: 'Invalid logic expression' };
-    }
+    // Use universal evaluator for correct handling of all operators
+    return evaluateUniversal(expr);
 }
 
 function evaluateSetTheory(expr) {
@@ -494,7 +498,7 @@ function clearCache() {
 function showThemesPage() {
     let html = '<div class="theme-grid">';
     themes.forEach((t, i) => {
-        html += `<div class="theme-card" data-theme="${t}" style="background:${getThemeColor(t)}; color:white; padding:12px; margin:5px; border-radius:12px; text-align:center; cursor:pointer;">${themeNames[i]}</div>`;
+        html += `<div class="theme-card" data-theme="${t}" style="background:${getThemeColor(t)}; color:white;">${themeNames[i]}</div>`;
     });
     html += '</div>';
     showFullPage('THEMES (12)', html);
@@ -510,7 +514,7 @@ function showFontPage() {
     const fonts = ['Times New Roman', 'Arial', 'Courier New', 'Georgia', 'Verdana'];
     let html = '<div class="font-selector-page">';
     fonts.forEach(f => {
-        html += `<div class="font-option" data-font="${f}" style="background:var(--btn-bg); padding:12px; margin:8px; border-radius:30px; text-align:center; cursor:pointer;">${f}</div>`;
+        html += `<div class="font-option" data-font="${f}">${f}</div>`;
     });
     html += '</div>';
     showFullPage('FONT', html);
@@ -529,13 +533,13 @@ function showHistoryPage() {
     }
     let html = '<div class="history-list-page">';
     historyEntries.forEach(h => {
-        html += `<div class="history-item-page" style="background:var(--bg-display); border-radius:12px; padding:10px; margin-bottom:8px; border-left:3px solid var(--accent);">
+        html += `<div class="history-item-page">
                     <div class="history-expr" style="font-family:monospace; font-weight:bold;">${escapeHtml(h.expr)}</div>
                     <div class="history-result" style="color:var(--accent);">= ${escapeHtml(h.result)}</div>
                     <div class="history-meta" style="font-size:0.7rem; opacity:0.6;">${h.branch} | ${h.date}</div>
                  </div>`;
     });
-    html += '</div><button id="clearHistoryFromPage" class="action-btn" style="margin-top:15px; background:#ef4444; border:none; padding:10px; border-radius:30px; color:white; cursor:pointer;">CLEAR ALL HISTORY</button>';
+    html += '</div><button id="clearHistoryFromPage" class="action-btn" style="margin-top:15px; background:#ef4444; border:none; padding:10px; border-radius:30px; color:white; cursor:pointer; width:100%;">CLEAR ALL HISTORY</button>';
     showFullPage('HISTORY', html);
     document.getElementById('clearHistoryFromPage')?.addEventListener('click', () => {
         clearHistory();
@@ -581,6 +585,7 @@ function init() {
     loadHistory();
     initTheme();
     initFont();
+    updateBranchIndicator();
     renderButtons();
 
     document.querySelectorAll('.branch-drawer-btn').forEach(btn => {
@@ -588,6 +593,7 @@ function init() {
             document.querySelectorAll('.branch-drawer-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             currentBranch = btn.getAttribute('data-branch');
+            updateBranchIndicator();
             renderButtons();
             fallbackMessage.style.display = 'none';
             toggleDrawer(false);
