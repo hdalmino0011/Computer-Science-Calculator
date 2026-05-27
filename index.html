@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=yes">
     <title>Universal CS Calculator | Hanz Dalmino</title>
     <link rel="stylesheet" href="styles.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#7c3aed">
 </head>
 <body>
 <div class="app-container">
@@ -14,7 +16,6 @@
         <div style="width: 40px;"></div>
     </div>
 
-    <!-- Main Calculator View -->
     <div id="calculatorView" class="calculator-view">
         <div class="display-area">
             <div id="branchIndicator" class="branch-indicator">Universal (Scientific)</div>
@@ -39,7 +40,6 @@
         </div>
     </div>
 
-    <!-- Full Page Content Views (hidden initially) -->
     <div id="fullPageView" class="full-page-view" style="display: none;">
         <div class="full-page-header">
             <button id="closeFullPageBtn" class="back-btn">← BACK</button>
@@ -49,7 +49,6 @@
         <div id="fullPageContent" class="full-page-content"></div>
     </div>
 
-    <!-- Step-by-Step Full View (hidden initially) -->
     <div id="stepsView" class="steps-view" style="display: none;">
         <div class="steps-header">
             <button id="backToCalculatorBtn" class="back-btn">← BACK</button>
@@ -62,7 +61,6 @@
     </div>
 </div>
 
-<!-- Side Drawer (Menu) -->
 <div id="drawer" class="drawer">
     <button class="close-drawer" id="closeDrawerBtn">✖ CLOSE</button>
 
@@ -82,6 +80,7 @@
     </div>
 
     <div class="drawer-section">
+        <button id="drawerHelpBtn" class="drawer-action-btn">HELP / HOW TO USE</button>
         <button id="drawerThemesBtn" class="drawer-action-btn">THEMES (12)</button>
         <button id="drawerFontBtn" class="drawer-action-btn">FONT</button>
         <button id="drawerHistoryBtn" class="drawer-action-btn">HISTORY</button>
@@ -92,6 +91,13 @@
 </div>
 <div id="overlay" class="overlay"></div>
 
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js')
+      .then(() => console.log('Service Worker registered'))
+      .catch((err) => console.error('Service Worker failed', err));
+  }
+</script>
 <script src="script.js"></script>
 </body>
 </html>
