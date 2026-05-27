@@ -5,6 +5,7 @@ let historyEntries = [];
 // DOM Elements
 const exprInput = document.getElementById('exprInput');
 const resultDisplay = document.getElementById('resultDisplay');
+const fallbackMessage = document.getElementById('fallbackMessage');
 const dynamicDiv = document.getElementById('dynamicButtons');
 const calculatorView = document.getElementById('calculatorView');
 const stepsView = document.getElementById('stepsView');
@@ -177,9 +178,7 @@ function getFullButtons(branch) {
         case 'complex': specific = complexButtons; break;
         default: specific = universalButtons;
     }
-    // Merge base buttons with branch-specific, ensuring uniqueness and 'C'/'CLEAR' at end
     const merged = [...new Set([...BASE_BUTTONS, ...specific])];
-    // Ensure 'C' or 'CLEAR' is last if present
     const clearBtn = merged.find(b => b === 'C' || b === 'CLEAR');
     const filtered = merged.filter(b => b !== 'C' && b !== 'CLEAR');
     if (clearBtn) filtered.push(clearBtn);
@@ -195,7 +194,7 @@ function renderButtons() {
         btn.className = 'calc-btn';
         btn.textContent = label;
         if (label === 'C' || label === 'CLEAR') {
-            btn.onclick = () => { exprInput.value = ''; resultDisplay.textContent = '0'; };
+            btn.onclick = () => { exprInput.value = ''; resultDisplay.textContent = '0'; fallbackMessage.style.display = 'none'; };
         } else {
             btn.onclick = () => {
                 if (currentBranch === 'conversion' && label.includes('→')) {
@@ -207,6 +206,63 @@ function renderButtons() {
         }
         dynamicDiv.appendChild(btn);
     });
+}
+
+// ========== STEP-BY-STEP BREAKDOWN GENERATOR ==========
+function generateSteps(expr) {
+    let steps = [];
+    let clean = preprocessExpression(expr);
+    
+    steps.push(`Original: ${expr}`);
+    steps.push(`After symbol mapping: ${clean}`);
+    
+    // Show sub-expression breakdown
+    let processed = clean.replace(/√/g, 'sqrt').replace(/\^/g, '**');
+    processed = processed.replace(/(\d+)!/g, (_, n) => `fact(${n})`);
+    processed = processed.replace(/(\d+)%/g, (_, n) => `(${n}/100)`);
+    processed = processed.replace(/\bAND\b/gi, '&&').replace(/\bOR\b/gi, '||').replace(/\bNOT\b/gi, '!');
+    processed = processed.replace(/==/g, '===').replace(/!=/g, '!==');
+    processed = processed.replace(/\bsin\(/g, 'Math.sin(');
+    processed = processed.replace(/\bcos\(/g, 'Math.cos(');
+    processed = processed.replace(/\btan\(/g, 'Math.tan(');
+    processed = processed.replace(/\blog\(/g, 'Math.log10(');
+    processed = processed.replace(/\bln\(/g, 'Math.log(');
+    processed = processed.replace(/\bsqrt\(/g, 'Math.sqrt(');
+    processed = processed.replace(/\babs\(/g, 'Math.abs(');
+    
+    steps.push(`Converted to JS: ${processed}`);
+    
+    // Try to identify and evaluate sub-expressions in parentheses
+    const parenRegex = /\(([^()]+)\)/g;
+    let match;
+    let subExprs = [];
+    while ((match = parenRegex.exec(processed)) !== null) {
+        subExprs.push(match[1]);
+    }
+    
+    if (subExprs.length > 0) {
+        steps.push(`Found ${subExprs.length} sub-expression(s) in parentheses:`);
+        subExprs.forEach((sub, i) => {
+            try {
+                const fn = new Function('factorial', 'return (' + sub + ')');
+                const val = fn(fact);
+                steps.push(`  (${sub}) = ${val}`);
+            } catch(e) {
+                steps.push(`  (${sub}) = [sub-expression]`);
+            }
+        });
+    }
+    
+    // Final evaluation
+    try {
+        const fn = new Function('factorial', 'return (' + processed + ')');
+        const result = fn(fact);
+        steps.push(`Final result: ${result}`);
+    } catch(e) {
+        steps.push(`Error: ${e.message}`);
+    }
+    
+    return steps.join('\n');
 }
 
 // ========== EVALUATION ENGINE ==========
@@ -230,7 +286,8 @@ function evaluateUniversal(expr) {
         
         const fn = new Function('factorial', 'return (' + processed + ')');
         const result = fn(fact);
-        return { result: result, steps: `Evaluated: ${processed} = ${result}` };
+        const steps = generateSteps(expr);
+        return { result: result, steps: steps };
     } catch (e) {
         return { result: 'Error', steps: 'Invalid expression: ' + e.message };
     }
@@ -256,7 +313,7 @@ function evaluateCombinatorics(expr) {
         let res = fact(n);
         return { result: res, steps: `${n}! = ${res}` };
     }
-    return { result: 'Error', steps: 'Use nCr(n,r), nPr(n,r), or n!' };
+    return { result: 'Error', steps: 'No combinatorics operation detected' };
 }
 
 function evaluateLogic(expr) {
@@ -282,7 +339,7 @@ function evaluateSetTheory(expr) {
     if (u.includes('\\')) return { result: 'A \\ B', steps: 'Difference: A minus B' };
     if (u.includes('SUBSET')) return { result: 'A ⊆ B', steps: 'Subset: all A in B' };
     if (u.includes('POWERSET')) return { result: 'P(A)', steps: 'Set of all subsets' };
-    return { result: 'Error', steps: 'No set operation detected; trying universal evaluation...' };
+    return { result: 'Error', steps: 'No set operation detected' };
 }
 
 function evaluateNumberTheory(expr) {
@@ -307,7 +364,7 @@ function evaluateNumberTheory(expr) {
         let isPrime = n > 1 && ![...Array(Math.floor(Math.sqrt(n))).keys()].slice(2).some(i => n % i === 0);
         return { result: isPrime, steps: `${n} is ${isPrime ? 'prime' : 'not prime'}` };
     }
-    return { result: 'Error', steps: 'Use gcd(a,b), lcm(a,b), mod(a,b), prime?(n)' };
+    return { result: 'Error', steps: 'No number theory operation detected' };
 }
 
 function evaluateConversion(expr) {
@@ -337,12 +394,11 @@ function evaluateMatrix(expr) {
         let det = a * d - b * c;
         return { result: det, steps: `det([${a} ${b}; ${c} ${d}]) = ${a}*${d} - ${b}*${c} = ${det}` };
     }
-    return { result: 'Error', steps: 'No matrix operation detected; trying universal evaluation...' };
+    return { result: 'Error', steps: 'No matrix operation detected' };
 }
 
 function evaluateComplex(expr) {
-    // Complex evaluator is placeholder – return error so universal can take over
-    return { result: 'Error', steps: 'Complex mode placeholder; trying universal evaluation...' };
+    return { result: 'Error', steps: 'No complex operation detected' };
 }
 
 function evaluateArithmetic(expr) {
@@ -354,9 +410,16 @@ function evaluate() {
     let raw = exprInput.value.trim();
     if (!raw) {
         resultDisplay.textContent = '0';
+        fallbackMessage.style.display = 'none';
         return;
     }
+    
+    // Hide fallback message initially
+    fallbackMessage.style.display = 'none';
+    
     let res;
+    let usedFallback = false;
+    
     // First, try branch-specific evaluator
     if (currentBranch === 'universal') {
         res = evaluateUniversal(raw);
@@ -380,18 +443,25 @@ function evaluate() {
         res = evaluateUniversal(raw);
     }
 
-    // If branch-specific failed, fallback to universal evaluation
+    // If branch-specific failed or returned Error, fallback to universal evaluation
     if (res.result === 'Error' || (typeof res.result === 'string' && res.result.startsWith('Error'))) {
         const fallbackRes = evaluateUniversal(raw);
-        // Only use fallback if it succeeds; otherwise keep original error
         if (fallbackRes.result !== 'Error' && !(typeof fallbackRes.result === 'string' && fallbackRes.result.startsWith('Error'))) {
+            usedFallback = true;
+            fallbackRes.steps = 'Expression entered does not match the branch, evaluating using universal branch.\n\n' + fallbackRes.steps;
             res = fallbackRes;
-            res.steps = '[Fallback to Universal] ' + res.steps;
         }
     }
 
     let resStr = res.result.toString();
     resultDisplay.textContent = resStr;
+    
+    // Show fallback message below result if universal fallback was used
+    if (usedFallback && currentBranch !== 'universal' && currentBranch !== 'arithmetic') {
+        fallbackMessage.textContent = 'Expression entered does not match the branch, evaluating using universal branch.';
+        fallbackMessage.style.display = 'block';
+    }
+    
     addHistory(raw, resStr, res.steps, currentBranch);
     showStepsView(raw, resStr, res.steps || 'No detailed steps');
 }
@@ -405,6 +475,7 @@ function toggleDrawer(open) {
 function resetSession() {
     exprInput.value = '';
     resultDisplay.textContent = '0';
+    fallbackMessage.style.display = 'none';
 }
 
 function clearCache() {
@@ -475,7 +546,7 @@ function showAboutPage() {
     const aboutHtml = `
         <div class="about-text">
             <h3>Developed by Hanz Dalmino</h3>
-            <p>Cebu Technological University Main Campus</p>
+            <p>a Bachelor of Science in Information Technology student from Cebu Technological University - Main Campus</p>
             <h3>Purpose</h3>
             <p>This Universal CS Calculator is specifically designed for students and professionals in <strong>Computer Science, Information Technology, Computer Engineering, and related fields</strong>. It provides step-by-step evaluation for a wide range of mathematical concepts essential to these disciplines.</p>
             <h3>Topics Covered</h3>
@@ -517,7 +588,8 @@ function init() {
             btn.classList.add('active');
             currentBranch = btn.getAttribute('data-branch');
             renderButtons();
-            // DO NOT clear input or result – keep expression intact
+            // Keep expression intact when switching branches
+            fallbackMessage.style.display = 'none';
             toggleDrawer(false);
         });
     });
@@ -530,7 +602,7 @@ function init() {
     document.getElementById('drawerExitBtn').onclick = () => { toggleDrawer(false); resetSession(); };
 
     document.getElementById('equalBtn').onclick = evaluate;
-    document.getElementById('clearBtn').onclick = () => { exprInput.value = ''; resultDisplay.textContent = '0'; };
+    document.getElementById('clearBtn').onclick = () => { exprInput.value = ''; resultDisplay.textContent = '0'; fallbackMessage.style.display = 'none'; };
     document.getElementById('backBtn').onclick = () => { exprInput.value = exprInput.value.slice(0, -1); };
     document.getElementById('menuToggleBtn').onclick = () => toggleDrawer(true);
     document.getElementById('closeDrawerBtn').onclick = () => toggleDrawer(false);
