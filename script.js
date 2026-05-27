@@ -16,6 +16,14 @@ const fullPageContent = document.getElementById('fullPageContent');
 // ========== SYMBOL PRE-PROCESSOR ==========
 function preprocessExpression(expr) {
     let processed = expr;
+    // First, normalize programming-style logical operators to word forms
+    // Handle && (but avoid replacing inside strings; simple approach)
+    processed = processed.replace(/&&/g, ' AND ');
+    processed = processed.replace(/\|\|/g, ' OR ');
+    // Handle ! as NOT, but preserve !=
+    processed = processed.replace(/!(?!=)/g, ' NOT ');
+    
+    // Now replace mathematical/logic symbols
     processed = processed.replace(/÷/g, '/');
     processed = processed.replace(/×/g, '*');
     processed = processed.replace(/≥/g, '>=');
@@ -27,6 +35,7 @@ function preprocessExpression(expr) {
     processed = processed.replace(/⊕/g, ' XOR ');
     processed = processed.replace(/→/g, ' IMPLIES ');
     processed = processed.replace(/↔/g, ' EQUIV ');
+    // Convert standalone '=' to '==' (only if not preceded by < > ! and not followed by = or whitespace)
     processed = processed.replace(/([^\s<>!])=([^\s=])/g, '$1==$2');
     return processed;
 }
