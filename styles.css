@@ -29,7 +29,6 @@ body {
     padding: 16px;
 }
 
-/* 12 Themes */
 body.theme-default { --bg-card: #1a1a2e; --accent: #7c3aed; }
 body.theme-obsidian { --bg-card: #2d2d2d; --accent: #a855f7; }
 body.theme-royalblue { --bg-card: #0f2a4a; --accent: #3b82f6; }
