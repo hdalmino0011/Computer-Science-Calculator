@@ -119,7 +119,6 @@ function evaluateArithmetic(expr) {
     try {
         let clean = expr.replace(/\s/g, '');
         if (!clean) return { result: '0', steps: 'Empty' };
-        // relational
         const relMatch = clean.match(/(.+?)(==|!=|<=|>=|<|>)(.+)/);
         if (relMatch) {
             let left = evalArith(relMatch[1]);
@@ -198,29 +197,23 @@ function compute(a,b,op) {
 // Combinatorics
 function evaluateCombinatorics(expr) {
     let u = expr.toUpperCase();
-    if (u.includes('NCR')) {
-        let m = u.match(/NCR\s*\(?\s*(\d+)\s*,\s*(\d+)/i);
-        if(m) {
-            let n=parseInt(m[1]), r=parseInt(m[2]);
-            let res = fact(n)/(fact(r)*fact(n-r));
-            return { result: res, steps: `C(${n},${r}) = ${n}!/(${r}!(${n-r})!) = ${res}` };
-        }
+    let m = u.match(/NCR\s*\(?\s*(\d+)\s*,\s*(\d+)/i);
+    if(m) {
+        let n=parseInt(m[1]), r=parseInt(m[2]);
+        let res = fact(n)/(fact(r)*fact(n-r));
+        return { result: res, steps: `C(${n},${r}) = ${n}!/(${r}!(${n-r})!) = ${res}` };
     }
-    if (u.includes('NPR')) {
-        let m = u.match(/NPR\s*\(?\s*(\d+)\s*,\s*(\d+)/i);
-        if(m) {
-            let n=parseInt(m[1]), r=parseInt(m[2]);
-            let res = fact(n)/fact(n-r);
-            return { result: res, steps: `P(${n},${r}) = ${n}!/(${n-r})! = ${res}` };
-        }
+    m = u.match(/NPR\s*\(?\s*(\d+)\s*,\s*(\d+)/i);
+    if(m) {
+        let n=parseInt(m[1]), r=parseInt(m[2]);
+        let res = fact(n)/fact(n-r);
+        return { result: res, steps: `P(${n},${r}) = ${n}!/(${n-r})! = ${res}` };
     }
-    if (u.includes('!')) {
-        let m = u.match(/(\d+)!/);
-        if(m) {
-            let n=parseInt(m[1]);
-            let res = fact(n);
-            return { result: res, steps: `${n}! = ${res}` };
-        }
+    m = u.match(/(\d+)!/);
+    if(m) {
+        let n=parseInt(m[1]);
+        let res = fact(n);
+        return { result: res, steps: `${n}! = ${res}` };
     }
     return { result: 'Error', steps: 'Use nCr(n,r), nPr(n,r), or n!' };
 }
@@ -341,7 +334,7 @@ function evaluateConversion(expr) {
     return { result:'Error', steps:'Unknown conversion' };
 }
 
-// Matrix (simplified)
+// Matrix
 function evaluateMatrix(expr) {
     let u = expr.toLowerCase();
     if(u.includes('det2x2')) {
