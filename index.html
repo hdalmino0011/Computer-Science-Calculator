@@ -3,17 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=yes">
-    <title>CS Calculator | Hanz Dalmino</title>
+    <title>Universal CS Calculator | Hanz Dalmino</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 <div class="app-container">
     <div class="top-bar">
         <button class="menu-btn" id="menuToggleBtn">☰</button>
-        <div class="title">CS CALCULATOR</div>
+        <div class="title">UNIVERSAL CS CALCULATOR</div>
         <div style="width: 40px;"></div>
     </div>
-    
+
     <!-- Main Calculator View -->
     <div id="calculatorView" class="calculator-view">
         <div class="display-area">
@@ -36,6 +36,16 @@
         </div>
     </div>
 
+    <!-- Full Page Content Views (hidden initially) -->
+    <div id="fullPageView" class="full-page-view" style="display: none;">
+        <div class="full-page-header">
+            <button id="closeFullPageBtn" class="back-btn">← BACK</button>
+            <div id="fullPageTitle" class="full-page-title"></div>
+            <div style="width: 60px;"></div>
+        </div>
+        <div id="fullPageContent" class="full-page-content"></div>
+    </div>
+
     <!-- Step-by-Step Full View (hidden initially) -->
     <div id="stepsView" class="steps-view" style="display: none;">
         <div class="steps-header">
@@ -49,14 +59,15 @@
     </div>
 </div>
 
-<!-- Side Drawer -->
+<!-- Side Drawer (Menu) -->
 <div id="drawer" class="drawer">
     <button class="close-drawer" id="closeDrawerBtn">✖ CLOSE</button>
-    
+
     <div class="drawer-section">
-        <div class="drawer-section-title">CALCULATOR MODE</div>
+        <div class="drawer-section-title">CALCULATOR MODES</div>
         <div id="branchSelector" class="branch-selector">
-            <button class="branch-drawer-btn active" data-branch="arithmetic">Arithmetic & Bitwise</button>
+            <button class="branch-drawer-btn" data-branch="universal">Universal (Scientific)</button>
+            <button class="branch-drawer-btn" data-branch="arithmetic">Arithmetic & Bitwise</button>
             <button class="branch-drawer-btn" data-branch="combinatorics">Combinatorics</button>
             <button class="branch-drawer-btn" data-branch="logic">Logic & Boolean</button>
             <button class="branch-drawer-btn" data-branch="settheory">Set Theory</button>
@@ -66,54 +77,17 @@
             <button class="branch-drawer-btn" data-branch="complex">Complex Numbers</button>
         </div>
     </div>
-    
+
     <div class="drawer-section">
-        <div class="drawer-section-title">THEMES</div>
-        <div id="themesGallery" class="themes-gallery"></div>
-    </div>
-    
-    <div class="drawer-section">
-        <div class="drawer-section-title">FONT</div>
-        <select id="fontSelector" class="font-select">
-            <option value="Times New Roman">Times New Roman</option>
-            <option value="Arial">Arial</option>
-            <option value="Courier New">Courier New</option>
-            <option value="Georgia">Georgia</option>
-            <option value="Verdana">Verdana</option>
-        </select>
-    </div>
-    
-    <div class="drawer-section">
-        <div class="drawer-section-title">HISTORY</div>
-        <button id="drawerHistoryBtn" class="drawer-action-btn">VIEW HISTORY</button>
-        <button id="drawerClearHistoryBtn" class="drawer-action-btn" style="background:#ef4444;">CLEAR HISTORY</button>
-    </div>
-    
-    <div class="drawer-section">
-        <div class="drawer-section-title">ABOUT</div>
-        <div class="about-content">
-            <strong>Hanz Dalmino</strong><br>
-            Cebu Technological University<br><br>
-            CS/IT Mathematics Tool<br>
-            Step-by-step evaluation.
-        </div>
-    </div>
-    
-    <div class="drawer-section">
+        <button id="drawerThemesBtn" class="drawer-action-btn">THEMES (12)</button>
+        <button id="drawerFontBtn" class="drawer-action-btn">FONT</button>
+        <button id="drawerHistoryBtn" class="drawer-action-btn">HISTORY</button>
+        <button id="drawerAboutBtn" class="drawer-action-btn">ABOUT</button>
         <button id="drawerClearCacheBtn" class="drawer-action-btn">CLEAR CACHE</button>
         <button id="drawerExitBtn" class="drawer-action-btn">RESET SESSION</button>
     </div>
 </div>
 <div id="overlay" class="overlay"></div>
-
-<!-- History Modal -->
-<div id="historyModal" class="history-modal">
-    <div class="history-header">
-        <h3>CALCULATION HISTORY</h3>
-        <button id="closeHistoryBtn" class="close-modal-btn">X</button>
-    </div>
-    <div id="historyList" class="history-list">No history</div>
-</div>
 
 <script src="script.js"></script>
 </body>
