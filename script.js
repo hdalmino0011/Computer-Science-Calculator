@@ -14,7 +14,6 @@ const fullPageView = document.getElementById('fullPageView');
 const fullPageTitle = document.getElementById('fullPageTitle');
 const fullPageContent = document.getElementById('fullPageContent');
 
-// Branch display names
 const branchNames = {
     'universal': 'Universal (Scientific)',
     'arithmetic': 'Arithmetic & Bitwise',
@@ -336,7 +335,6 @@ function evaluateCombinatorics(expr) {
 }
 
 function evaluateLogic(expr) {
-    // Use universal evaluator for correct handling of all operators
     return evaluateUniversal(expr);
 }
 
@@ -492,136 +490,191 @@ function clearCache() {
         initFont();
         resetSession();
         alert('Cache cleared. Theme and font reset.');
-    }
+}
+}
+
+function showHelpPage() {
+const helpHtml = `
+<div class="about-text" style="font-size:0.8rem;">
+<h3>HOW TO USE THIS CALCULATOR</h3>
+
+<h3>--- BASIC ARITHMETIC ---</h3>
+<p><strong>Addition:</strong> 5 + 3</p>
+<p><strong>Subtraction:</strong> 10 - 4</p>
+<p><strong>Multiplication:</strong> 6 * 7 (or use × button)</p>
+<p><strong>Division:</strong> 15 / 3 (or use ÷ button)</p>
+<p><strong>Exponent/Power:</strong> 2^3 or 5^2 (result: 8 and 25)</p>
+<p><strong>Modulo:</strong> 10 % 3 or 10 % 3 (result: 1) — works with or without spaces</p>
+<p><strong>Percentage:</strong> 200% (result: 2) — type a number followed by %</p>
+<p><strong>Factorial:</strong> 5! (result: 120)</p>
+<p><strong>Square Root:</strong> √(16) or sqrt(16) (result: 4) — MUST use parentheses</p>
+<p><strong>Nth Root:</strong> 27^(1/3) (cube root, result: 3)</p>
+<p><strong>Absolute Value:</strong> abs(-5) (result: 5)</p>
+
+<h3>--- SCIENTIFIC FUNCTIONS ---</h3>
+<p><strong>Sine:</strong> sin(30) — input in degrees is NOT auto-converted; use radians or convert manually</p>
+<p><strong>Cosine:</strong> cos(0)</p>
+<p><strong>Tangent:</strong> tan(45)</p>
+<p><strong>Log base 10:</strong> log(100) (result: 2)</p>
+<p><strong>Natural Log (ln):</strong> ln(2.718)</p>
+
+<h3>--- RELATIONAL OPERATORS ---</h3>
+<p><strong>Equal:</strong> 5 == 5 (result: true)</p>
+<p><strong>Not Equal:</strong> 5 != 3 or 5 ≠ 3</p>
+<p><strong>Greater Than:</strong> 8 > 3</p>
+<p><strong>Less Than:</strong> 3 < 8</p>
+<p><strong>Greater or Equal:</strong> 5 >= 5 or 5 ≥ 5</p>
+<p><strong>Less or Equal:</strong> 4 <= 5 or 4 ≤ 5</p>
+
+<h3>--- LOGICAL OPERATORS ---</h3>
+<p><strong>AND:</strong> (5 > 3) AND (2 < 4) — or use && or ∧</p>
+<p><strong>OR:</strong> (1 > 5) OR (3 == 3) — or use || or ∨</p>
+<p><strong>NOT:</strong> NOT (5 > 3) — or use ! or ¬</p>
+<p><strong>XOR:</strong> TRUE XOR FALSE</p>
+<p><strong>IMPLIES:</strong> TRUE IMPLIES FALSE (result: false)</p>
+<p><strong>EQUIV:</strong> TRUE EQUIV TRUE (result: true)</p>
+
+<h3>--- COMBINATORICS ---</h3>
+<p><strong>Combination (nCr):</strong> nCr(5,2) or nCr 5,2 (result: 10)</p>
+<p><strong>Permutation (nPr):</strong> nPr(5,2) or nPr 5,2 (result: 20)</p>
+
+<h3>--- NUMBER THEORY ---</h3>
+<p><strong>GCD:</strong> gcd(12,8) or gcd 12,8 (result: 4)</p>
+<p><strong>LCM:</strong> lcm(12,8) or lcm 12,8 (result: 24)</p>
+<p><strong>Modulo (function):</strong> mod(10,3) or mod 10,3 (result: 1)</p>
+<p><strong>Prime Check:</strong> prime?(7) (result: true)</p>
+
+<h3>--- NUMBER SYSTEM CONVERSIONS ---</h3>
+<p>Use the Conversion branch buttons. Format: <strong>DEC → BINARY 255</strong></p>
+<p>Or type: DEC → BINARY 255, BIN → DECIMAL 1010, DEC → HEX 255, HEX → DECIMAL FF, DEC → OCT 64, OCT → DECIMAL 100, BIN → HEX 1111</p>
+
+<h3>--- SET THEORY ---</h3>
+<p><strong>Union:</strong> UNION</p>
+<p><strong>Intersection:</strong> ∩</p>
+<p><strong>Complement:</strong> COMPLEMENT</p>
+<p><strong>Difference:</strong> \</p>
+<p><strong>Subset:</strong> SUBSET</p>
+<p><strong>Powerset:</strong> POWERSET</p>
+
+<h3>--- MATRIX ---</h3>
+<p><strong>Determinant 2x2:</strong> det2x2(a,b,c,d) — for matrix [a b; c d]</p>
+<p><strong>Example:</strong> det2x2(1,2,3,4) — det = 14 - 23 = -2</p>
+
+<h3>--- COMPLEX NUMBERS ---</h3>
+<p>This branch is a placeholder; use Universal for complex expressions.</p>
+
+<h3>--- IMPORTANT TIPS ---</h3>
+<p>Always use parentheses with functions: <strong>√(16)</strong> NOT √16</p>
+<p>For logical expressions with multiple operators, use parentheses to group: <strong>((5>3) AND (2<4)) OR (1==1)</strong></p>
+<p>You can mix operators: <strong>(2+3)*4</strong>, <strong>5! + 3^2</strong></p>
+<p>If an expression fails in a specific branch, it automatically falls back to Universal mode with a warning message.</p>
+</div>
+`;
+showFullPage('HELP / HOW TO USE', helpHtml);
 }
 
 function showThemesPage() {
-    let html = '<div class="theme-grid">';
-    themes.forEach((t, i) => {
-        html += `<div class="theme-card" data-theme="${t}" style="background:${getThemeColor(t)}; color:white;">${themeNames[i]}</div>`;
-    });
-    html += '</div>';
-    showFullPage('THEMES (12)', html);
-    document.querySelectorAll('.theme-card').forEach(card => {
-        card.addEventListener('click', () => {
-            applyTheme(card.dataset.theme);
-            showCalculatorView();
-        });
-    });
+let html = '<div class="theme-grid">';
+themes.forEach((t, i) => {
+html += <div class="theme-card" data-theme="${t}" style="background: {themeNames[i]}</div>`;
+});
+html += '</div>';
+showFullPage('THEMES (12)', html);
+document.querySelectorAll('.theme-card').forEach(card => {
+card.addEventListener('click', () => {
+applyTheme(card.dataset.theme);
+showCalculatorView();
+});
+});
 }
 
 function showFontPage() {
-    const fonts = ['Times New Roman', 'Arial', 'Courier New', 'Georgia', 'Verdana'];
-    let html = '<div class="font-selector-page">';
-    fonts.forEach(f => {
-        html += `<div class="font-option" data-font="${f}">${f}</div>`;
-    });
-    html += '</div>';
-    showFullPage('FONT', html);
-    document.querySelectorAll('.font-option').forEach(opt => {
-        opt.addEventListener('click', () => {
-            setFont(opt.dataset.font);
-            showCalculatorView();
-        });
-    });
+const fonts = ['Times New Roman', 'Arial', 'Courier New', 'Georgia', 'Verdana'];
+let html = '<div class="font-selector-page">';
+fonts.forEach(f => {
+html += <div class="font-option" data-font="${f}">${f}&lt;/div>;
+});
+html += '</div>';
+showFullPage('FONT', html);
+document.querySelectorAll('.font-option').forEach(opt => {
+opt.addEventListener('click', () => {
+setFont(opt.dataset.font);
+showCalculatorView();
+});
+});
 }
 
 function showHistoryPage() {
-    if (historyEntries.length === 0) {
-        showFullPage('HISTORY', '<div class="history-item-page">No history yet</div>');
-        return;
-    }
-    let html = '<div class="history-list-page">';
-    historyEntries.forEach(h => {
-        html += `<div class="history-item-page">
-                    <div class="history-expr" style="font-family:monospace; font-weight:bold;">${escapeHtml(h.expr)}</div>
-                    <div class="history-result" style="color:var(--accent);">= ${escapeHtml(h.result)}</div>
-                    <div class="history-meta" style="font-size:0.7rem; opacity:0.6;">${h.branch} | ${h.date}</div>
-                 </div>`;
-    });
-    html += '</div><button id="clearHistoryFromPage" class="action-btn" style="margin-top:15px; background:#ef4444; border:none; padding:10px; border-radius:30px; color:white; cursor:pointer; width:100%;">CLEAR ALL HISTORY</button>';
-    showFullPage('HISTORY', html);
-    document.getElementById('clearHistoryFromPage')?.addEventListener('click', () => {
-        clearHistory();
-        showHistoryPage();
-    });
+if (historyEntries.length === 0) {
+showFullPage('HISTORY', '<div class="history-item-page">No history yet</div>');
+return;
+}
+let html = '<div class="history-list-page">';
+historyEntries.forEach(h => {
+html += <div class="history-item-page"&gt; &lt;div class="history-expr" style="font-family:monospace; font-weight:bold;"&gt;${escapeHtml(h.expr)}</div>
+<div class="history-result" style="color:var(--accent);">= ${escapeHtml(h.result)}&lt;/div&gt; &lt;div class="history-meta" style="font-size:0.7rem; opacity:0.6;"&gt;${h.branch} | ${h.date}&lt;/div&gt; &lt;/div>;
+});
+html += '</div><button id="clearHistoryFromPage" class="action-btn" style="margin-top:15px; background:#ef4444; border:none; padding:10px; border-radius:30px; color:white; cursor:pointer; width:100%;">CLEAR ALL HISTORY</button>';
+showFullPage('HISTORY', html);
+document.getElementById('clearHistoryFromPage')?.addEventListener('click', () => {
+clearHistory();
+showHistoryPage();
+});
 }
 
 function showAboutPage() {
-    const aboutHtml = `
-        <div class="about-text">
-            <h3>Developed by Hanz Dalmino</h3>
-            <p>a Bachelor of Science in Information Technology student from Cebu Technological University - Main Campus</p>
-            <h3>Purpose</h3>
-            <p>This Universal CS Calculator is specifically designed for students and professionals in <strong>Computer Science, Information Technology, Computer Engineering, and related fields</strong>. It provides step-by-step evaluation for a wide range of mathematical concepts essential to these disciplines.</p>
-            <h3>Topics Covered</h3>
-            <ul>
-                <li>Arithmetic & Bitwise Operations</li>
-                <li>Relational and Logical Operators</li>
-                <li>Combinatorics (nCr, nPr, Factorials)</li>
-                <li>Boolean Algebra and Logic Gates</li>
-                <li>Set Theory (Union, Intersection, Complement, Subset)</li>
-                <li>Number Theory (GCD, LCM, Modulo, Primality)</li>
-                <li>Number System Conversions (Binary, Decimal, Hex, Octal)</li>
-                <li>Matrix Algebra (Determinants, basic operations)</li>
-                <li>Complex Numbers</li>
-                <li>Scientific Functions (sin, cos, tan, log, ln, sqrt, abs)</li>
-            </ul>
-            <h3>Why This Calculator?</h3>
-            <p>Unlike simple calculators, this tool shows every step of the evaluation, helping students understand the process behind the answer. It handles complex expressions mixing arithmetic, bitwise, relational, and logical operators in a single line.</p>
-            <p>It is also fully customizable with 12 themes and multiple fonts, and it works on desktop, tablet, and mobile devices.</p>
-        </div>
-    `;
-    showFullPage('ABOUT', aboutHtml);
+const aboutHtml = &lt;div class="about-text"&gt; &lt;h3&gt;Developed by Hanz Dalmino&lt;/h3&gt; &lt;p&gt;a Bachelor of Science in Information Technology student from Cebu Technological University - Main Campus&lt;/p&gt; &lt;h3&gt;Purpose&lt;/h3&gt; &lt;p&gt;This Universal CS Calculator is specifically designed for students and professionals in &lt;strong&gt;Computer Science, Information Technology, Computer Engineering, and related fields&lt;/strong&gt;. It provides step-by-step evaluation for a wide range of mathematical concepts essential to these disciplines.&lt;/p&gt; &lt;h3&gt;Topics Covered&lt;/h3&gt; &lt;ul&gt; &lt;li&gt;Arithmetic & Bitwise Operations&lt;/li&gt; &lt;li&gt;Relational and Logical Operators&lt;/li&gt; &lt;li&gt;Combinatorics (nCr, nPr, Factorials)&lt;/li&gt; &lt;li&gt;Boolean Algebra and Logic Gates&lt;/li&gt; &lt;li&gt;Set Theory (Union, Intersection, Complement, Subset)&lt;/li&gt; &lt;li&gt;Number Theory (GCD, LCM, Modulo, Primality)&lt;/li&gt; &lt;li&gt;Number System Conversions (Binary, Decimal, Hex, Octal)&lt;/li&gt; &lt;li&gt;Matrix Algebra (Determinants, basic operations)&lt;/li&gt; &lt;li&gt;Complex Numbers&lt;/li&gt; &lt;li&gt;Scientific Functions (sin, cos, tan, log, ln, sqrt, abs)&lt;/li&gt; &lt;/ul&gt; &lt;h3&gt;Why This Calculator?&lt;/h3&gt; &lt;p&gt;Unlike simple calculators, this tool shows every step of the evaluation, helping students understand the process behind the answer. It handles complex expressions mixing arithmetic, bitwise, relational, and logical operators in a single line.&lt;/p&gt; &lt;p&gt;It is also fully customizable with 12 themes and multiple fonts, and it works on desktop, tablet, and mobile devices.&lt;/p&gt; &lt;/div&gt;;
+showFullPage('ABOUT', aboutHtml);
 }
 
 function getThemeColor(t) {
-    const c = { default: '#7c3aed', obsidian: '#a855f7', royalblue: '#3b82f6', orange: '#f97316', highcontrast: '#ffff00', forest: '#22c55e', crimson: '#ef4444', slate: '#64748b', purple: '#c084fc', midnight: '#60a5fa', sand: '#fbbf24', 'cyan-night': '#06b6d4' };
-    return c[t] || '#7c3aed';
+const c = { default: '#7c3aed', obsidian: '#a855f7', royalblue: '#3b82f6', orange: '#f97316', highcontrast: '#ffff00', forest: '#22c55e', crimson: '#ef4444', slate: '#64748b', purple: '#c084fc', midnight: '#60a5fa', sand: '#fbbf24', 'cyan-night': '#06b6d4' };
+return c[t] || '#7c3aed';
 }
 
 // ========== INITIALIZATION ==========
 function init() {
-    loadHistory();
-    initTheme();
-    initFont();
-    updateBranchIndicator();
-    renderButtons();
+loadHistory();
+initTheme();
+initFont();
+updateBranchIndicator();
+renderButtons();
 
-    document.querySelectorAll('.branch-drawer-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            document.querySelectorAll('.branch-drawer-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            currentBranch = btn.getAttribute('data-branch');
-            updateBranchIndicator();
-            renderButtons();
-            fallbackMessage.style.display = 'none';
-            toggleDrawer(false);
-        });
-    });
+document.querySelectorAll('.branch-drawer-btn').forEach(btn => {
+btn.addEventListener('click', () => {
+document.querySelectorAll('.branch-drawer-btn').forEach(b => b.classList.remove('active'));
+btn.classList.add('active');
+currentBranch = btn.getAttribute('data-branch');
+updateBranchIndicator();
+renderButtons();
+fallbackMessage.style.display = 'none';
+toggleDrawer(false);
+});
+});
 
-    document.getElementById('drawerThemesBtn').onclick = () => { toggleDrawer(false); showThemesPage(); };
-    document.getElementById('drawerFontBtn').onclick = () => { toggleDrawer(false); showFontPage(); };
-    document.getElementById('drawerHistoryBtn').onclick = () => { toggleDrawer(false); showHistoryPage(); };
-    document.getElementById('drawerAboutBtn').onclick = () => { toggleDrawer(false); showAboutPage(); };
-    document.getElementById('drawerClearCacheBtn').onclick = () => { toggleDrawer(false); clearCache(); };
-    document.getElementById('drawerExitBtn').onclick = () => { toggleDrawer(false); resetSession(); };
+document.getElementById('drawerHelpBtn').onclick = () => { toggleDrawer(false); showHelpPage(); };
+document.getElementById('drawerThemesBtn').onclick = () => { toggleDrawer(false); showThemesPage(); };
+document.getElementById('drawerFontBtn').onclick = () => { toggleDrawer(false); showFontPage(); };
+document.getElementById('drawerHistoryBtn').onclick = () => { toggleDrawer(false); showHistoryPage(); };
+document.getElementById('drawerAboutBtn').onclick = () => { toggleDrawer(false); showAboutPage(); };
+document.getElementById('drawerClearCacheBtn').onclick = () => { toggleDrawer(false); clearCache(); };
+document.getElementById('drawerExitBtn').onclick = () => { toggleDrawer(false); resetSession(); };
 
-    document.getElementById('equalBtn').onclick = evaluate;
-    document.getElementById('clearBtn').onclick = () => { exprInput.value = ''; resultDisplay.textContent = '0'; fallbackMessage.style.display = 'none'; };
-    document.getElementById('spaceBtn').onclick = () => { exprInput.value += ' '; };
-    document.getElementById('backBtn').onclick = () => { exprInput.value = exprInput.value.slice(0, -1); };
-    document.getElementById('menuToggleBtn').onclick = () => toggleDrawer(true);
-    document.getElementById('closeDrawerBtn').onclick = () => toggleDrawer(false);
-    document.getElementById('overlay').onclick = () => toggleDrawer(false);
-    document.getElementById('closeFullPageBtn').onclick = () => showCalculatorView();
-    document.getElementById('backToCalculatorBtn').onclick = () => showCalculatorView();
+document.getElementById('equalBtn').onclick = evaluate;
+document.getElementById('clearBtn').onclick = () => { exprInput.value = ''; resultDisplay.textContent = '0'; fallbackMessage.style.display = 'none'; };
+document.getElementById('spaceBtn').onclick = () => { exprInput.value += ' '; };
+document.getElementById('backBtn').onclick = () => { exprInput.value = exprInput.value.slice(0, -1); };
+document.getElementById('menuToggleBtn').onclick = () => toggleDrawer(true);
+document.getElementById('closeDrawerBtn').onclick = () => toggleDrawer(false);
+document.getElementById('overlay').onclick = () => toggleDrawer(false);
+document.getElementById('closeFullPageBtn').onclick = () => showCalculatorView();
+document.getElementById('backToCalculatorBtn').onclick = () => showCalculatorView();
 
-    exprInput.addEventListener('keypress', e => { if (e.key === 'Enter') evaluate(); });
+exprInput.addEventListener('keypress', e => { if (e.key === 'Enter') evaluate(); });
 
-    document.querySelectorAll('.branch-drawer-btn').forEach(btn => {
-        if (btn.getAttribute('data-branch') === currentBranch) btn.classList.add('active');
-    });
+document.querySelectorAll('.branch-drawer-btn').forEach(btn => {
+if (btn.getAttribute('data-branch') === currentBranch) btn.classList.add('active');
+});
 }
 
 init();
