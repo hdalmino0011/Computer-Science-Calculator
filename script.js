@@ -161,7 +161,6 @@ const complexButtons = [
     're', 'im', 'conj', 'abs', 'arg', '+', '-', '*', '/', 'C'
 ];
 
-// Base number and operator buttons for all branches
 const BASE_BUTTONS = ['7','8','9','4','5','6','1','2','3','0','.','(',')','+','-','*','/'];
 
 function getFullButtons(branch) {
@@ -218,8 +217,7 @@ function generateSteps(expr) {
     
     let processed = clean.replace(/√/g, 'sqrt').replace(/\^/g, '**');
     processed = processed.replace(/(\d+)!/g, (_, n) => `fact(${n})`);
-    // Fixed: only convert % to percentage if NOT directly followed by a digit
-    processed = processed.replace(/(\d+)%(?![0-9])/g, (_, n) => `(${n}/100)`);
+    processed = processed.replace(/(\d+)\s*%\s*(?![0-9])/g, (_, n) => `(${n}/100)`);
     processed = processed.replace(/\bAND\b/gi, '&&').replace(/\bOR\b/gi, '||').replace(/\bNOT\b/gi, '!');
     processed = processed.replace(/==/g, '===').replace(/!=/g, '!==');
     processed = processed.replace(/\bsin\(/g, 'Math.sin(');
@@ -271,8 +269,7 @@ function evaluateUniversal(expr) {
         
         let processed = clean.replace(/√/g, 'sqrt').replace(/\^/g, '**');
         processed = processed.replace(/(\d+)!/g, (_, n) => `fact(${n})`);
-        // Fixed: only convert % to percentage if NOT directly followed by a digit
-        processed = processed.replace(/(\d+)%(?![0-9])/g, (_, n) => `(${n}/100)`);
+        processed = processed.replace(/(\d+)\s*%\s*(?![0-9])/g, (_, n) => `(${n}/100)`);
         processed = processed.replace(/\bAND\b/gi, '&&').replace(/\bOR\b/gi, '||').replace(/\bNOT\b/gi, '!');
         processed = processed.replace(/==/g, '===').replace(/!=/g, '!==');
         processed = processed.replace(/\bsin\(/g, 'Math.sin(');
@@ -597,6 +594,7 @@ function init() {
 
     document.getElementById('equalBtn').onclick = evaluate;
     document.getElementById('clearBtn').onclick = () => { exprInput.value = ''; resultDisplay.textContent = '0'; fallbackMessage.style.display = 'none'; };
+    document.getElementById('spaceBtn').onclick = () => { exprInput.value += ' '; };
     document.getElementById('backBtn').onclick = () => { exprInput.value = exprInput.value.slice(0, -1); };
     document.getElementById('menuToggleBtn').onclick = () => toggleDrawer(true);
     document.getElementById('closeDrawerBtn').onclick = () => toggleDrawer(false);
