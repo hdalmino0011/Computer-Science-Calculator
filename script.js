@@ -1,12 +1,41 @@
 // STATE
 let currentBranch = "arithmetic";
 let historyEntries = [];
+let currentStepsData = null;
 
 // DOM
 const exprInput = document.getElementById('exprInput');
 const resultDisplay = document.getElementById('resultDisplay');
-const stepsDisplay = document.getElementById('stepsDisplay');
 const dynamicDiv = document.getElementById('dynamicButtons');
+const calculatorView = document.getElementById('calculatorView');
+const stepsView = document.getElementById('stepsView');
+
+// ========== VIEW SWITCHING ==========
+function showCalculatorView() {
+    calculatorView.style.display = 'block';
+    stepsView.style.display = 'none';
+}
+
+function showStepsView(expression, result, steps, branch) {
+    document.getElementById('stepsExpression').innerHTML = `<strong>Expression:</strong> ${escapeHtml(expression)}`;
+    document.getElementById('stepsResultFull').innerHTML = `<span class="result-label">RESULT:</span> <span class="result-value">${escapeHtml(result)}</span>`;
+    
+    const stepsList = document.getElementById('stepsListFull');
+    if (!steps || steps === 'No steps') {
+        stepsList.innerHTML = '<div class="step-item">No detailed steps available</div>';
+    } else {
+        const stepLines = steps.split('\n');
+        stepsList.innerHTML = stepLines.map((line, idx) => {
+            if (line.trim()) {
+                return `<div class="step-item"><span class="step-number">${idx + 1}.</span> ${escapeHtml(line)}</div>`;
+            }
+            return '';
+        }).join('');
+    }
+    
+    calculatorView.style.display = 'none';
+    stepsView.style.display = 'flex';
+}
 
 // ========== HISTORY ==========
 function loadHistory() {
@@ -17,14 +46,15 @@ function saveHistory() {
     localStorage.setItem('csCalcHistory', JSON.stringify(historyEntries.slice(-50)));
 }
 function addHistory(expr, result, steps, branch) {
-    historyEntries.unshift({ expr, result, steps: steps.substring(0, 200), branch, date: new Date().toLocaleString() });
+    historyEntries.unshift({ expr, result, steps: steps.substring(0, 300), branch, date: new Date().toLocaleString() });
     if (historyEntries.length > 50) historyEntries.pop();
     saveHistory();
 }
 function clearHistory() {
     historyEntries = [];
     saveHistory();
-    document.getElementById('historyList').innerHTML = '<div class="history-item">No history</div>';
+    const listDiv = document.getElementById('historyList');
+    if (listDiv) listDiv.innerHTML = '<div class="history-item">No history</div>';
 }
 
 // ========== THEMES (12) ==========
@@ -103,7 +133,9 @@ function renderButtons() {
         btn.className = 'calc-btn';
         btn.textContent = label;
         if (label === 'C' || label === 'CLEAR') {
-            btn.onclick = () => { exprInput.value = ''; stepsDisplay.innerHTML = 'Cleared'; resultDisplay.textContent = '0'; };
+            btn.onclick = () => { exprInput.value = ''; resultDisplay.textContent = '0'; };
+        } else if (label === '=') {
+            // handled by equal button
         } else {
             btn.onclick = () => {
                 if (currentBranch === 'conversion' && label.includes('->')) exprInput.value = label + ' ';
@@ -118,7 +150,7 @@ function renderButtons() {
 function evaluateArithmetic(expr) {
     try {
         let clean = expr.replace(/\s/g, '');
-        if (!clean) return { result: '0', steps: 'Empty' };
+        if (!clean) return { result: '0', steps: 'Empty expression' };
         const relMatch = clean.match(/(.+?)(==|!=|<=|>=|<|>)(.+)/);
         if (relMatch) {
             let left = evalArith(relMatch[1]);
@@ -131,7 +163,7 @@ function evaluateArithmetic(expr) {
             else if (op === '>') bool = left.val > right.val;
             else if (op === '<=') bool = left.val <= right.val;
             else if (op === '>=') bool = left.val >= right.val;
-            return { result: bool, steps: `${left.steps}\n${right.steps}\n${left.val} ${op} ${right.val} = ${bool}` };
+            return { result: bool, steps: `${left.steps}\n${right.steps}\nResult: ${left.val} ${op} ${right.val} = ${bool}` };
         }
         let res = evalArith(clean);
         return { result: res.val, steps: res.steps };
@@ -146,7 +178,7 @@ function evalArith(expr) {
         else if (t === '~') {
             let a = stack.pop();
             let res = ~a.val;
-            steps.push(`~(${a.raw}) = ${res}`);
+            steps.push(`${a.raw} ~ = ${res}`);
             stack.push({ val: res, raw: res });
         } else {
             let b = stack.pop(), a = stack.pop();
@@ -353,10 +385,13 @@ function evaluateComplex(expr) {
     return { result: 'Complex mode', steps: 'Use re(z), im(z), conj(z), abs(z), arg(z), and + - * /' };
 }
 
-// Main evaluate
+// Main evaluate - NOW SHOWS FULL PAGE STEPS
 function evaluate() {
     let raw = exprInput.value.trim();
-    if (!raw) { resultDisplay.textContent='0'; stepsDisplay.innerHTML='Enter expression'; return; }
+    if (!raw) { 
+        resultDisplay.textContent = '0'; 
+        return; 
+    }
     let res;
     if (currentBranch === 'arithmetic') res = evaluateArithmetic(raw);
     else if (currentBranch === 'combinatorics') res = evaluateCombinatorics(raw);
@@ -366,10 +401,13 @@ function evaluate() {
     else if (currentBranch === 'conversion') res = evaluateConversion(raw);
     else if (currentBranch === 'matrix') res = evaluateMatrix(raw);
     else res = evaluateComplex(raw);
+    
     let resStr = res.result.toString();
     resultDisplay.textContent = resStr;
-    stepsDisplay.innerHTML = res.steps || 'No steps';
     addHistory(raw, resStr, res.steps, currentBranch);
+    
+    // Show full page steps view
+    showStepsView(raw, resStr, res.steps || 'No detailed steps', currentBranch);
 }
 
 // ========== UI ==========
@@ -392,7 +430,7 @@ function showHistory() {
     }
     modal.style.display='block';
 }
-function resetSession() { exprInput.value=''; resultDisplay.textContent='0'; stepsDisplay.innerHTML='Ready'; }
+function resetSession() { exprInput.value=''; resultDisplay.textContent='0'; }
 function clearCache() {
     if(confirm('Clear all cache and history?')) {
         localStorage.clear();
@@ -419,12 +457,11 @@ function init() {
             currentBranch = btn.getAttribute('data-branch');
             renderButtons();
             exprInput.value='';
-            stepsDisplay.innerHTML=`${currentBranch.toUpperCase()} mode`;
             resultDisplay.textContent='0';
         });
     });
     document.getElementById('equalBtn').onclick = evaluate;
-    document.getElementById('clearBtn').onclick = () => { exprInput.value=''; stepsDisplay.innerHTML='Cleared'; resultDisplay.textContent='0'; };
+    document.getElementById('clearBtn').onclick = () => { exprInput.value=''; resultDisplay.textContent='0'; };
     document.getElementById('backBtn').onclick = () => { exprInput.value = exprInput.value.slice(0,-1); };
     document.getElementById('historyShowBtn').onclick = showHistory;
     document.getElementById('menuToggleBtn').onclick = () => toggleDrawer(true);
@@ -434,6 +471,7 @@ function init() {
     document.getElementById('drawerExitBtn').onclick = () => { toggleDrawer(false); resetSession(); };
     document.getElementById('closeHistoryBtn').onclick = () => document.getElementById('historyModal').style.display='none';
     document.getElementById('clearHistoryBtn').onclick = () => { clearHistory(); if(document.getElementById('historyModal').style.display==='block') showHistory(); };
+    document.getElementById('backToCalculatorBtn').onclick = () => showCalculatorView();
     exprInput.addEventListener('keypress', e => { if(e.key==='Enter') evaluate(); });
 }
 init();
