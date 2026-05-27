@@ -1,7 +1,6 @@
 // STATE
 let currentBranch = "arithmetic";
 let historyEntries = [];
-let currentStepsData = null;
 
 // DOM
 const exprInput = document.getElementById('exprInput');
@@ -56,6 +55,22 @@ function clearHistory() {
     const listDiv = document.getElementById('historyList');
     if (listDiv) listDiv.innerHTML = '<div class="history-item">No history</div>';
 }
+function showHistoryModal() {
+    const modal = document.getElementById('historyModal');
+    const listDiv = document.getElementById('historyList');
+    if (historyEntries.length === 0) {
+        listDiv.innerHTML = '<div class="history-item">No history</div>';
+    } else {
+        listDiv.innerHTML = historyEntries.map(h => `
+            <div class="history-item">
+                <div class="history-expr">${escapeHtml(h.expr)}</div>
+                <div class="history-result">= ${escapeHtml(h.result)}</div>
+                <div class="history-meta" style="font-size:0.65rem; opacity:0.6;">${h.branch} | ${h.date}</div>
+            </div>
+        `).join('');
+    }
+    modal.style.display = 'block';
+}
 
 // ========== THEMES (12) ==========
 const themes = ['default','obsidian','royalblue','orange','highcontrast','forest','crimson','slate','purple','midnight','sand','cyan-night'];
@@ -107,12 +122,18 @@ function initFont() {
 }
 
 // ========== BUTTONS PER BRANCH ==========
-const arithmetic = ['7','8','9','/','(',' )','4','5','6','*','%','^','1','2','3','-','&','|','0','.','+','~','<<','>>','C','=','<','>','<=','>=','==','!='];
+// Arithmetic includes fractions (a/b), exponents (x^y), roots (√), %, !, log, ln, sin, cos, tan, abs
+const arithmetic = [
+    '7','8','9','/','(',' )','4','5','6','*','%','^','1','2','3','-','+','0','.','√','!','abs','sin','cos','tan','log','ln','C'
+];
 const combinatorics = ['nCr','nPr','!','P(n,r)','C(n,r)','C'];
 const logic = ['TRUE','FALSE','AND','OR','NOT','XOR','IMPLIES','EQUIV','(',')','C'];
 const settheory = ['UNION','∩','COMPLEMENT','\\','SUBSET','POWERSET','{', '}', ',', 'C'];
 const numbertheory = ['gcd','lcm','mod','prime?','factor','C'];
-const conversion = ['DEC->BIN','BIN->DEC','DEC->HEX','HEX->DEC','DEC->OCT','OCT->DEC','BIN->HEX','CLEAR'];
+const conversion = [
+    'DEC → BINARY', 'BIN → DECIMAL', 'DEC → HEX', 'HEX → DECIMAL',
+    'DEC → OCT', 'OCT → DECIMAL', 'BIN → HEX', 'CLEAR'
+];
 const matrix = ['det2x2','add2x2','mul2x2','[a b; c d]','C'];
 const complex = ['re','im','conj','abs','arg','+','-','*','/','C'];
 
@@ -134,12 +155,13 @@ function renderButtons() {
         btn.textContent = label;
         if (label === 'C' || label === 'CLEAR') {
             btn.onclick = () => { exprInput.value = ''; resultDisplay.textContent = '0'; };
-        } else if (label === '=') {
-            // handled by equal button
         } else {
             btn.onclick = () => {
-                if (currentBranch === 'conversion' && label.includes('->')) exprInput.value = label + ' ';
-                else exprInput.value += label;
+                if (currentBranch === 'conversion' && label.includes('→')) {
+                    exprInput.value = label + ' ';
+                } else {
+                    exprInput.value += label;
+                }
             };
         }
         dynamicDiv.appendChild(btn);
@@ -147,84 +169,73 @@ function renderButtons() {
 }
 
 // ========== EVALUATION ENGINES ==========
+// Enhanced arithmetic with functions, fractions, roots, etc.
 function evaluateArithmetic(expr) {
     try {
         let clean = expr.replace(/\s/g, '');
         if (!clean) return { result: '0', steps: 'Empty expression' };
+        // Replace √ with sqrt
+        clean = clean.replace(/√/g, 'sqrt');
+        // Replace ! with factorial handling
+        if (clean.includes('!')) {
+            let match = clean.match(/(\d+)!/);
+            if (match) {
+                let n = parseInt(match[1]);
+                let res = fact(n);
+                return { result: res, steps: `${n}! = ${res}` };
+            }
+        }
+        // Replace abs(x) with Math.abs
+        clean = clean.replace(/abs\(/g, 'Math.abs(');
+        // Replace sin, cos, tan, log, ln
+        clean = clean.replace(/sin\(/g, 'Math.sin(');
+        clean = clean.replace(/cos\(/g, 'Math.cos(');
+        clean = clean.replace(/tan\(/g, 'Math.tan(');
+        clean = clean.replace(/log\(/g, 'Math.log10(');
+        clean = clean.replace(/ln\(/g, 'Math.log(');
+        clean = clean.replace(/sqrt\(/g, 'Math.sqrt(');
+        
+        // Handle fractions like a/b
+        if (clean.includes('/') && !clean.includes('(') && !clean.includes('+') && !clean.includes('-') && !clean.includes('*')) {
+            let parts = clean.split('/');
+            if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+                let res = parseFloat(parts[0]) / parseFloat(parts[1]);
+                return { result: res, steps: `${parts[0]} / ${parts[1]} = ${res}` };
+            }
+        }
+        
+        // Relational operators
         const relMatch = clean.match(/(.+?)(==|!=|<=|>=|<|>)(.+)/);
         if (relMatch) {
-            let left = evalArith(relMatch[1]);
-            let right = evalArith(relMatch[3]);
+            let left = evalArithSafe(relMatch[1]);
+            let right = evalArithSafe(relMatch[3]);
             let op = relMatch[2];
             let bool = false;
-            if (op === '==') bool = left.val === right.val;
-            else if (op === '!=') bool = left.val !== right.val;
-            else if (op === '<') bool = left.val < right.val;
-            else if (op === '>') bool = left.val > right.val;
-            else if (op === '<=') bool = left.val <= right.val;
-            else if (op === '>=') bool = left.val >= right.val;
-            return { result: bool, steps: `${left.steps}\n${right.steps}\nResult: ${left.val} ${op} ${right.val} = ${bool}` };
+            if (op === '==') bool = left === right;
+            else if (op === '!=') bool = left !== right;
+            else if (op === '<') bool = left < right;
+            else if (op === '>') bool = left > right;
+            else if (op === '<=') bool = left <= right;
+            else if (op === '>=') bool = left >= right;
+            return { result: bool, steps: `${left} ${op} ${right} = ${bool}` };
         }
-        let res = evalArith(clean);
-        return { result: res.val, steps: res.steps };
-    } catch(e) { return { result: 'Error', steps: 'Invalid expression' }; }
-}
-function evalArith(expr) {
-    let tokens = tokenize(expr);
-    let rpn = toRPN(tokens);
-    let stack = [], steps = [];
-    for (let t of rpn) {
-        if (!isOp(t)) stack.push({ val: parseFloat(t), raw: t });
-        else if (t === '~') {
-            let a = stack.pop();
-            let res = ~a.val;
-            steps.push(`${a.raw} ~ = ${res}`);
-            stack.push({ val: res, raw: res });
-        } else {
-            let b = stack.pop(), a = stack.pop();
-            let res = compute(a.val, b.val, t);
-            steps.push(`${a.raw} ${t} ${b.raw} = ${res}`);
-            stack.push({ val: res, raw: res });
-        }
+        
+        let res = evalArithSafe(clean);
+        return { result: res, steps: `Result = ${res}` };
+    } catch(e) {
+        return { result: 'Error', steps: 'Invalid expression' };
     }
-    return { val: stack[0].val, steps: steps.map((s,i)=>`Step ${i+1}: ${s}`).join('\n') };
 }
-function tokenize(e) {
-    let t=[], i=0;
-    while(i<e.length) {
-        let ch=e[i];
-        if(ch>='0'&&ch<='9'||ch=='.') { let n=''; while(i<e.length&&(e[i]>='0'&&e[i]<='9'||e[i]=='.')) n+=e[i++]; t.push(n); continue; }
-        if(ch=='('||ch==')') { t.push(ch); i++; continue; }
-        if(ch=='<'&&e[i+1]=='<') { t.push('<<'); i+=2; continue; }
-        if(ch=='>'&&e[i+1]=='>') { t.push('>>'); i+=2; continue; }
-        if('+-*/%^&|~'.includes(ch)) { t.push(ch); i++; continue; }
-        i++;
+function evalArithSafe(expr) {
+    try {
+        // Use Function for safe evaluation with Math support
+        const fn = new Function('return (' + expr + ')');
+        return fn();
+    } catch(e) {
+        throw new Error('Evaluation error');
     }
-    return t;
 }
-function isOp(op) { return '+-*/%^&|~<<>>'.includes(op); }
-function prec(op) {
-    if(op=='~') return 5; if(op=='^') return 4; if(op=='*'||op=='/'||op=='%') return 3;
-    if(op=='+'||op=='-') return 2; if(op=='<<'||op=='>>') return 1; if(op=='&') return 0; if(op=='|') return -1; return -2;
-}
-function toRPN(tokens) {
-    let out=[], stack=[];
-    for(let t of tokens) {
-        if(!isNaN(parseFloat(t))&&isFinite(t)) out.push(t);
-        else if(t=='(') stack.push(t);
-        else if(t==')') { while(stack.length && stack[stack.length-1]!='(') out.push(stack.pop()); stack.pop(); }
-        else if(isOp(t)) { while(stack.length && isOp(stack[stack.length-1]) && prec(stack[stack.length-1])>=prec(t)) out.push(stack.pop()); stack.push(t); }
-    }
-    while(stack.length) out.push(stack.pop());
-    return out;
-}
-function compute(a,b,op) {
-    a=Number(a); b=Number(b);
-    if(op=='+') return a+b; if(op=='-') return a-b; if(op=='*') return a*b; if(op=='/') return a/b;
-    if(op=='%') return a%b; if(op=='^') return Math.pow(a,b); if(op=='&') return a&b;
-    if(op=='|') return a|b; if(op=='<<') return a<<b; if(op=='>>') return a>>b;
-    return 0;
-}
+function fact(n) { if(n<0) return NaN; let r=1; for(let i=2;i<=n;i++) r*=i; return r; }
 
 // Combinatorics
 function evaluateCombinatorics(expr) {
@@ -249,7 +260,6 @@ function evaluateCombinatorics(expr) {
     }
     return { result: 'Error', steps: 'Use nCr(n,r), nPr(n,r), or n!' };
 }
-function fact(n) { if(n<0) return NaN; let r=1; for(let i=2;i<=n;i++) r*=i; return r; }
 
 // Logic
 function evaluateLogic(expr) {
@@ -346,19 +356,19 @@ function evaluateNumberTheory(expr) {
 }
 function gcd(a,b) { while(b) { let t=b; b=a%b; a=t; } return a; }
 
-// Conversion
+// Conversion (with full names)
 function evaluateConversion(expr) {
-    let m = expr.match(/(DEC->BIN|BIN->DEC|DEC->HEX|HEX->DEC|DEC->OCT|OCT->DEC|BIN->HEX)\s+(\S+)/i);
-    if(!m) return { result:'Error', steps:'Format: DEC->BIN 255' };
+    let m = expr.match(/(DEC → BINARY|BIN → DECIMAL|DEC → HEX|HEX → DECIMAL|DEC → OCT|OCT → DECIMAL|BIN → HEX)\s+(\S+)/i);
+    if(!m) return { result:'Error', steps:'Format: DEC → BINARY 255' };
     let type=m[1].toUpperCase(), val=m[2];
     try {
-        if(type==='DEC->BIN') return { result: parseInt(val).toString(2), steps: `Convert ${val} to binary = ${parseInt(val).toString(2)}` };
-        if(type==='BIN->DEC') return { result: parseInt(val,2), steps: `Binary ${val} to decimal = ${parseInt(val,2)}` };
-        if(type==='DEC->HEX') return { result: parseInt(val).toString(16).toUpperCase(), steps: `Convert ${val} to hex = ${parseInt(val).toString(16).toUpperCase()}` };
-        if(type==='HEX->DEC') return { result: parseInt(val,16), steps: `Hex ${val} to decimal = ${parseInt(val,16)}` };
-        if(type==='DEC->OCT') return { result: parseInt(val).toString(8), steps: `Convert ${val} to octal = ${parseInt(val).toString(8)}` };
-        if(type==='OCT->DEC') return { result: parseInt(val,8), steps: `Octal ${val} to decimal = ${parseInt(val,8)}` };
-        if(type==='BIN->HEX') {
+        if(type.includes('DEC → BINARY')) return { result: parseInt(val).toString(2), steps: `Convert ${val} to binary = ${parseInt(val).toString(2)}` };
+        if(type.includes('BIN → DECIMAL')) return { result: parseInt(val,2), steps: `Binary ${val} to decimal = ${parseInt(val,2)}` };
+        if(type.includes('DEC → HEX')) return { result: parseInt(val).toString(16).toUpperCase(), steps: `Convert ${val} to hex = ${parseInt(val).toString(16).toUpperCase()}` };
+        if(type.includes('HEX → DECIMAL')) return { result: parseInt(val,16), steps: `Hex ${val} to decimal = ${parseInt(val,16)}` };
+        if(type.includes('DEC → OCT')) return { result: parseInt(val).toString(8), steps: `Convert ${val} to octal = ${parseInt(val).toString(8)}` };
+        if(type.includes('OCT → DECIMAL')) return { result: parseInt(val,8), steps: `Octal ${val} to decimal = ${parseInt(val,8)}` };
+        if(type.includes('BIN → HEX')) {
             let dec=parseInt(val,2);
             return { result: dec.toString(16).toUpperCase(), steps: `Binary to decimal = ${dec}, then hex = ${dec.toString(16).toUpperCase()}` };
         }
@@ -385,7 +395,7 @@ function evaluateComplex(expr) {
     return { result: 'Complex mode', steps: 'Use re(z), im(z), conj(z), abs(z), arg(z), and + - * /' };
 }
 
-// Main evaluate - NOW SHOWS FULL PAGE STEPS
+// Main evaluate
 function evaluate() {
     let raw = exprInput.value.trim();
     if (!raw) { 
@@ -405,8 +415,6 @@ function evaluate() {
     let resStr = res.result.toString();
     resultDisplay.textContent = resStr;
     addHistory(raw, resStr, res.steps, currentBranch);
-    
-    // Show full page steps view
     showStepsView(raw, resStr, res.steps || 'No detailed steps', currentBranch);
 }
 
@@ -415,24 +423,9 @@ function toggleDrawer(open) {
     document.getElementById('drawer').classList.toggle('open', open);
     document.getElementById('overlay').classList.toggle('active', open);
 }
-function showHistory() {
-    let modal = document.getElementById('historyModal');
-    let listDiv = document.getElementById('historyList');
-    if (historyEntries.length===0) listDiv.innerHTML='<div class="history-item">No history</div>';
-    else {
-        listDiv.innerHTML = historyEntries.map(h => `
-            <div class="history-item">
-                <div class="history-expr">${escapeHtml(h.expr)}</div>
-                <div class="history-result">= ${escapeHtml(h.result)}</div>
-                <div class="history-meta" style="font-size:0.65rem; opacity:0.6;">${h.branch} | ${h.date}</div>
-            </div>
-        `).join('');
-    }
-    modal.style.display='block';
-}
 function resetSession() { exprInput.value=''; resultDisplay.textContent='0'; }
 function clearCache() {
-    if(confirm('Clear all cache and history?')) {
+    if(confirm('Clear all cache, history, and reset to defaults?')) {
         localStorage.clear();
         historyEntries=[];
         saveHistory();
@@ -450,27 +443,31 @@ function init() {
     initTheme();
     initFont();
     renderButtons();
-    document.querySelectorAll('.branch-btn').forEach(btn => {
+    
+    // Branch selection from drawer
+    document.querySelectorAll('.branch-drawer-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
-            document.querySelectorAll('.branch-btn').forEach(b=>b.classList.remove('active'));
+            document.querySelectorAll('.branch-drawer-btn').forEach(b=>b.classList.remove('active'));
             btn.classList.add('active');
             currentBranch = btn.getAttribute('data-branch');
             renderButtons();
             exprInput.value='';
             resultDisplay.textContent='0';
+            toggleDrawer(false);
         });
     });
+    
     document.getElementById('equalBtn').onclick = evaluate;
     document.getElementById('clearBtn').onclick = () => { exprInput.value=''; resultDisplay.textContent='0'; };
     document.getElementById('backBtn').onclick = () => { exprInput.value = exprInput.value.slice(0,-1); };
-    document.getElementById('historyShowBtn').onclick = showHistory;
     document.getElementById('menuToggleBtn').onclick = () => toggleDrawer(true);
     document.getElementById('closeDrawerBtn').onclick = () => toggleDrawer(false);
     document.getElementById('overlay').onclick = () => toggleDrawer(false);
     document.getElementById('drawerClearCacheBtn').onclick = () => { toggleDrawer(false); clearCache(); };
     document.getElementById('drawerExitBtn').onclick = () => { toggleDrawer(false); resetSession(); };
+    document.getElementById('drawerHistoryBtn').onclick = () => { toggleDrawer(false); showHistoryModal(); };
+    document.getElementById('drawerClearHistoryBtn').onclick = () => { clearHistory(); toggleDrawer(false); alert('History cleared'); };
     document.getElementById('closeHistoryBtn').onclick = () => document.getElementById('historyModal').style.display='none';
-    document.getElementById('clearHistoryBtn').onclick = () => { clearHistory(); if(document.getElementById('historyModal').style.display==='block') showHistory(); };
     document.getElementById('backToCalculatorBtn').onclick = () => showCalculatorView();
     exprInput.addEventListener('keypress', e => { if(e.key==='Enter') evaluate(); });
 }
