@@ -179,13 +179,12 @@ body.theme-cyan-night { --bg-card: #0a2535; --accent: #06b6d4; --num-btn-bg: #08
 
 .buttons-panel {
     padding: 8px 14px 14px;
-    padding-bottom: calc(14px + env(safe-area-inset-bottom, 8px));
     background: rgba(0,0,0,0.2);
-    flex-shrink: 0;
+    flex: 1;
     display: flex;
     flex-direction: column;
-    max-height: 55vh;
-    min-height: 280px;
+    overflow: hidden;
+    min-height: 0;
 }
 
 .button-grid {
@@ -228,7 +227,6 @@ body.theme-cyan-night { --bg-card: #0a2535; --accent: #06b6d4; --num-btn-bg: #08
     background: var(--accent);
 }
 
-/* Number buttons - distinct purple/violet background */
 .calc-btn.number-btn {
     background: var(--num-btn-bg);
     border-color: var(--num-btn-bg);
@@ -245,7 +243,6 @@ body.theme-cyan-night { --bg-card: #0a2535; --accent: #06b6d4; --num-btn-bg: #08
     transform: scale(0.95);
 }
 
-/* Operator buttons */
 .calc-btn.operator-btn {
     background: var(--btn-bg);
     border-color: var(--border);
@@ -256,7 +253,6 @@ body.theme-cyan-night { --bg-card: #0a2535; --accent: #06b6d4; --num-btn-bg: #08
     transform: scale(0.95);
 }
 
-/* Action buttons row - always visible */
 .action-buttons {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
@@ -305,7 +301,6 @@ body.theme-cyan-night { --bg-card: #0a2535; --accent: #06b6d4; --num-btn-bg: #08
     transform: scale(0.95);
 }
 
-/* Full page view */
 .full-page-view {
     flex: 1;
     display: flex;
@@ -411,7 +406,6 @@ body.theme-cyan-night { --bg-card: #0a2535; --accent: #06b6d4; --num-btn-bg: #08
     border-left: 3px solid var(--accent);
 }
 
-/* Steps view */
 .steps-view {
     flex: 1;
     display: flex;
@@ -507,7 +501,6 @@ body.theme-cyan-night { --bg-card: #0a2535; --accent: #06b6d4; --num-btn-bg: #08
     margin-right: 12px;
 }
 
-/* Drawer */
 .drawer {
     position: fixed;
     top: 0;
@@ -604,7 +597,74 @@ body.theme-cyan-night { --bg-card: #0a2535; --accent: #06b6d4; --num-btn-bg: #08
     display: block;
 }
 
-/* Desktop */
+/* Update Modal */
+.update-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Times New Roman', Times, serif;
+}
+
+.update-modal-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.7);
+}
+
+.update-modal-content {
+    position: relative;
+    background: var(--bg-card);
+    border: 1px solid var(--accent);
+    border-radius: 20px;
+    padding: 24px;
+    max-width: 340px;
+    width: 90%;
+    text-align: center;
+    z-index: 1;
+}
+
+.update-modal-title {
+    font-size: 1.1rem;
+    font-weight: bold;
+    color: var(--accent);
+    margin-bottom: 12px;
+    letter-spacing: 1px;
+}
+
+.update-modal-message {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-bottom: 20px;
+    line-height: 1.5;
+}
+
+.update-modal-buttons {
+    display: flex;
+    gap: 10px;
+}
+
+.update-modal-buttons .action-btn {
+    flex: 1;
+}
+
+/* Mobile safe area support */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+    @media (max-width: 768px) {
+        .buttons-panel {
+            padding-bottom: calc(14px + env(safe-area-inset-bottom));
+        }
+    }
+}
+
 @media (min-width: 769px) {
     .app-container {
         max-width: 100%;
@@ -615,7 +675,6 @@ body.theme-cyan-night { --bg-card: #0a2535; --accent: #06b6d4; --num-btn-bg: #08
     }
 }
 
-/* Mobile */
 @media (max-width: 768px) {
     .app-container {
         height: 100vh;
@@ -624,88 +683,86 @@ body.theme-cyan-night { --bg-card: #0a2535; --accent: #06b6d4; --num-btn-bg: #08
         border: none;
         box-shadow: none;
     }
-    
+
     .button-grid {
         gap: 5px;
     }
-    
+
     .calc-btn {
         font-size: 0.75rem;
         padding: 8px 0;
         min-height: 40px;
     }
-    
+
     .action-buttons {
         gap: 6px;
         margin-top: 8px;
     }
-    
+
     .action-btn {
         min-height: 44px;
         font-size: 0.85rem;
         padding: 10px;
     }
-    
+
     .drawer {
         width: 85%;
         left: -85%;
     }
-    
+
     .title {
         font-size: 0.75rem;
     }
-    
+
     .display-area {
         padding: 12px;
     }
 }
 
-/* Small mobile / landscape */
 @media (max-height: 500px) {
     .display-area {
         padding: 8px;
     }
-    
+
     .branch-indicator {
         padding: 4px 10px;
         font-size: 0.6rem;
         margin-bottom: 4px;
     }
-    
+
     .expression-input {
         margin-bottom: 6px;
     }
-    
+
     #exprInput {
         padding: 6px 10px;
         font-size: 0.85rem;
     }
-    
+
     .result-box {
         padding: 4px 10px;
         font-size: 1rem;
     }
-    
+
     .buttons-panel {
         padding: 6px 10px 10px;
-        min-height: 200px;
     }
-    
+
     .button-grid {
         gap: 4px;
     }
-    
+
     .calc-btn {
         min-height: 32px;
         font-size: 0.65rem;
         padding: 4px 0;
     }
-    
+
     .action-buttons {
         gap: 4px;
         margin-top: 6px;
     }
-    
+
     .action-btn {
         min-height: 36px;
         font-size: 0.75rem;
