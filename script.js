@@ -7,8 +7,7 @@ const exprInput = document.getElementById('exprInput');
 const resultDisplay = document.getElementById('resultDisplay');
 const fallbackMessage = document.getElementById('fallbackMessage');
 const branchIndicator = document.getElementById('branchIndicator');
-const numberGrid = document.getElementById('numberButtons');
-const operatorGrid = document.getElementById('operatorButtons');
+const dynamicDiv = document.getElementById('dynamicButtons');
 const calculatorView = document.getElementById('calculatorView');
 const stepsView = document.getElementById('stepsView');
 const fullPageView = document.getElementById('fullPageView');
@@ -210,33 +209,29 @@ function isNumberButton(label) {
 
 function renderButtons() {
     const btns = getFullButtons(currentBranch);
+    
+    // Separate numbers from everything else
     const numberBtns = btns.filter(label => isNumberButton(label));
-    const operatorBtns = btns.filter(label => !isNumberButton(label));
-
-    // Clear grids safely
-    if (numberGrid) numberGrid.innerHTML = '';
-    if (operatorGrid) operatorGrid.innerHTML = '';
-
-    // Populate number buttons
+    const otherBtns = btns.filter(label => !isNumberButton(label));
+    
+    dynamicDiv.innerHTML = '';
+    
+    // Render number buttons first (they fill columns 1-3 naturally)
     numberBtns.forEach(label => {
         const btn = document.createElement('button');
         btn.className = 'calc-btn number-btn';
         btn.textContent = label;
         btn.onclick = () => { exprInput.value += label; };
-        if (numberGrid) numberGrid.appendChild(btn);
+        dynamicDiv.appendChild(btn);
     });
-
-    // Populate operator/function buttons
-    operatorBtns.forEach(label => {
+    
+    // Render all other buttons
+    otherBtns.forEach(label => {
         const btn = document.createElement('button');
         btn.className = 'calc-btn';
         btn.textContent = label;
         if (label === 'C' || label === 'CLEAR') {
-            btn.onclick = () => { 
-                exprInput.value = ''; 
-                if (resultDisplay) resultDisplay.textContent = '0'; 
-                if (fallbackMessage) fallbackMessage.style.display = 'none'; 
-            };
+            btn.onclick = () => { exprInput.value = ''; if (resultDisplay) resultDisplay.textContent = '0'; if (fallbackMessage) fallbackMessage.style.display = 'none'; };
         } else {
             btn.onclick = () => {
                 if (currentBranch === 'conversion' && label.includes('→')) {
@@ -246,7 +241,7 @@ function renderButtons() {
                 }
             };
         }
-        if (operatorGrid) operatorGrid.appendChild(btn);
+        dynamicDiv.appendChild(btn);
     });
 }
 
