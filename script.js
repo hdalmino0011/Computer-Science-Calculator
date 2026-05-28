@@ -613,6 +613,87 @@ function clearCache() {
     }
 }
 
+// NEW: Hard reset that clears all caches and reloads the app
+function hardResetAndRefresh() {
+    if (confirm('Reset session: This will clear all history, preferences, and reload the app. Continue?')) {
+        // Clear localStorage
+        localStorage.clear();
+        // Clear any cached data from service worker caches
+        if ('caches' in window) {
+            caches.keys().then(function(names) {
+                for (var i = 0; i < names.length; i++) {
+                    caches.delete(names[i]);
+                }
+            });
+        }
+        // If service worker is installed, try to unregister? Not needed, just reload.
+        // Reload the page with cache-busting
+        window.location.reload(true);
+    }
+}
+
+// Update modal logic
+var updateModal = document.getElementById('updateModal');
+var updateNotNowBtn = document.getElementById('updateNotNowBtn');
+var updateNowBtn = document.getElementById('updateNowBtn');
+var pendingUpdateWorker = null;
+
+function showUpdateModal(message) {
+    if (!updateModal) return;
+    var msgElem = document.getElementById('updateMessage');
+    if (msgElem) msgElem.textContent = message || 'A new version is available. Please update.';
+    updateModal.style.display = 'flex';
+}
+
+function hideUpdateModal() {
+    if (updateModal) updateModal.style.display = 'none';
+}
+
+// Call this when a waiting service worker is found
+function promptForUpdate(worker) {
+    pendingUpdateWorker = worker;
+    showUpdateModal('A new version of the app is ready. Update now?');
+}
+
+// Setup service worker update detection
+function setupServiceWorkerUpdates() {
+    if (!('serviceWorker' in navigator)) return;
+    navigator.serviceWorker.ready.then(function(registration) {
+        // Check for updates every 30 minutes
+        setInterval(function() {
+            registration.update();
+        }, 30 * 60 * 1000);
+
+        // Listen for new service worker waiting
+        if (registration.waiting) {
+            promptForUpdate(registration.waiting);
+        }
+        registration.addEventListener('updatefound', function() {
+            var newWorker = registration.installing;
+            newWorker.addEventListener('statechange', function() {
+                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                    promptForUpdate(newWorker);
+                }
+            });
+        });
+    });
+
+    // Detect controller change (already updated)
+    navigator.serviceWorker.addEventListener('controllerchange', function() {
+        window.location.reload();
+    });
+}
+
+function doUpdateNow() {
+    if (pendingUpdateWorker) {
+        pendingUpdateWorker.postMessage({ action: 'skipWaiting' });
+        hideUpdateModal();
+    } else {
+        // Fallback: just reload
+        window.location.reload(true);
+    }
+}
+
 function showHelpPage() {
     var helpHtml = '<div class="about-text" style="font-size:0.8rem;">' +
         '<h3>HOW TO USE THIS CALCULATOR</h3>' +
@@ -860,7 +941,8 @@ function init() {
     document.getElementById('drawerHistoryBtn').onclick = function() { toggleDrawer(false); showHistoryPage(); };
     document.getElementById('drawerAboutBtn').onclick = function() { toggleDrawer(false); showAboutPage(); };
     document.getElementById('drawerClearCacheBtn').onclick = function() { toggleDrawer(false); clearCache(); };
-    document.getElementById('drawerExitBtn').onclick = function() { toggleDrawer(false); resetSession(); };
+    // Changed to use hardResetAndRefresh instead of resetSession
+    document.getElementById('drawerExitBtn').onclick = function() { toggleDrawer(false); hardResetAndRefresh(); };
 
     document.getElementById('equalBtn').onclick = evaluate;
     document.getElementById('clearBtn').onclick = function() { 
@@ -876,6 +958,10 @@ function init() {
     document.getElementById('closeFullPageBtn').onclick = function() { showCalculatorView(); };
     document.getElementById('backToCalculatorBtn').onclick = function() { showCalculatorView(); };
 
+    // Update modal buttons
+    if (updateNotNowBtn) updateNotNowBtn.onclick = function() { hideUpdateModal(); };
+    if (updateNowBtn) updateNowBtn.onclick = function() { doUpdateNow(); };
+
     exprInput.addEventListener('keypress', function(e) { 
         if (e.key === 'Enter') evaluate(); 
     });
@@ -886,6 +972,9 @@ function init() {
             activeBtns[i].classList.add('active');
         }
     }
+
+    // Setup service worker update detection after page loads
+    setupServiceWorkerUpdates();
 }
 
 init();
