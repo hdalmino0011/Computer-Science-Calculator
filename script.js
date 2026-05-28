@@ -214,6 +214,7 @@ function renderButtons() {
     const numberBtns = btns.filter(label => isNumberButton(label));
     const otherBtns = btns.filter(label => !isNumberButton(label));
     
+    if (!dynamicDiv) return;
     dynamicDiv.innerHTML = '';
     
     // Render number buttons first (they fill columns 1-3 naturally)
@@ -231,7 +232,11 @@ function renderButtons() {
         btn.className = 'calc-btn';
         btn.textContent = label;
         if (label === 'C' || label === 'CLEAR') {
-            btn.onclick = () => { exprInput.value = ''; if (resultDisplay) resultDisplay.textContent = '0'; if (fallbackMessage) fallbackMessage.style.display = 'none'; };
+            btn.onclick = () => { 
+                exprInput.value = ''; 
+                if (resultDisplay) resultDisplay.textContent = '0'; 
+                if (fallbackMessage) fallbackMessage.style.display = 'none'; 
+            };
         } else {
             btn.onclick = () => {
                 if (currentBranch === 'conversion' && label.includes('→')) {
@@ -246,7 +251,9 @@ function renderButtons() {
 }
 
 function updateBranchIndicator() {
-    branchIndicator.textContent = branchNames[currentBranch] || 'Universal (Scientific)';
+    if (branchIndicator) {
+        branchIndicator.textContent = branchNames[currentBranch] || 'Universal (Scientific)';
+    }
 }
 
 // ========== ROBUST MODULO / PERCENTAGE HANDLER ==========
@@ -720,7 +727,7 @@ function init() {
             currentBranch = btn.getAttribute('data-branch');
             updateBranchIndicator();
             renderButtons();
-            fallbackMessage.style.display = 'none';
+            if (fallbackMessage) fallbackMessage.style.display = 'none';
             toggleDrawer(false);
         });
     });
@@ -735,7 +742,7 @@ function init() {
     document.getElementById('drawerExitBtn').onclick = () => { toggleDrawer(false); resetSession(); };
 
     document.getElementById('equalBtn').onclick = evaluate;
-    document.getElementById('clearBtn').onclick = () => { exprInput.value = ''; resultDisplay.textContent = '0'; fallbackMessage.style.display = 'none'; };
+    document.getElementById('clearBtn').onclick = () => { exprInput.value = ''; resultDisplay.textContent = '0'; if (fallbackMessage) fallbackMessage.style.display = 'none'; };
     document.getElementById('spaceBtn').onclick = () => { exprInput.value += ' '; };
     document.getElementById('backBtn').onclick = () => { exprInput.value = exprInput.value.slice(0, -1); };
     document.getElementById('menuToggleBtn').onclick = () => toggleDrawer(true);
