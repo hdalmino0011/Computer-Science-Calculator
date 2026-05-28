@@ -16,6 +16,9 @@
     --btn-bg: #1e1e30;
     --btn-hover: #2d2d44;
     --steps-bg: #0a0a14;
+    /* number button highlight – a slightly muted accent */
+    --num-btn-bg: #6d28d9;
+    --num-btn-hover: #7c3aed;
 }
 
 body {
@@ -32,18 +35,18 @@ body {
     overflow: hidden;
 }
 
-body.theme-default { --bg-card: #1a1a2e; --accent: #7c3aed; }
-body.theme-obsidian { --bg-card: #2d2d2d; --accent: #a855f7; }
-body.theme-royalblue { --bg-card: #0f2a4a; --accent: #3b82f6; }
-body.theme-orange { --bg-card: #3d2a1a; --accent: #f97316; }
-body.theme-highcontrast { --bg-card: #000000; --accent: #ffff00; }
-body.theme-forest { --bg-card: #0f2a0f; --accent: #22c55e; }
-body.theme-crimson { --bg-card: #3a1515; --accent: #ef4444; }
-body.theme-slate { --bg-card: #1e2e3e; --accent: #64748b; }
-body.theme-purple { --bg-card: #251a3a; --accent: #c084fc; }
-body.theme-midnight { --bg-card: #0f0f2a; --accent: #60a5fa; }
-body.theme-sand { --bg-card: #4a3a1a; --accent: #fbbf24; }
-body.theme-cyan-night { --bg-card: #0a2535; --accent: #06b6d4; }
+body.theme-default { --bg-card: #1a1a2e; --accent: #7c3aed; --num-btn-bg: #6d28d9; }
+body.theme-obsidian { --bg-card: #2d2d2d; --accent: #a855f7; --num-btn-bg: #9333ea; }
+body.theme-royalblue { --bg-card: #0f2a4a; --accent: #3b82f6; --num-btn-bg: #1d4ed8; }
+body.theme-orange { --bg-card: #3d2a1a; --accent: #f97316; --num-btn-bg: #ea580c; }
+body.theme-highcontrast { --bg-card: #000000; --accent: #ffff00; --num-btn-bg: #cccc00; }
+body.theme-forest { --bg-card: #0f2a0f; --accent: #22c55e; --num-btn-bg: #16a34a; }
+body.theme-crimson { --bg-card: #3a1515; --accent: #ef4444; --num-btn-bg: #dc2626; }
+body.theme-slate { --bg-card: #1e2e3e; --accent: #64748b; --num-btn-bg: #475569; }
+body.theme-purple { --bg-card: #251a3a; --accent: #c084fc; --num-btn-bg: #a855f7; }
+body.theme-midnight { --bg-card: #0f0f2a; --accent: #60a5fa; --num-btn-bg: #3b82f6; }
+body.theme-sand { --bg-card: #4a3a1a; --accent: #fbbf24; --num-btn-bg: #d97706; }
+body.theme-cyan-night { --bg-card: #0a2535; --accent: #06b6d4; --num-btn-bg: #0891b2; }
 
 .app-container {
     width: 100%;
@@ -354,6 +357,7 @@ body.theme-cyan-night { --bg-card: #0a2535; --accent: #06b6d4; }
 
 .buttons-panel {
     padding: 8px 14px 14px;
+    padding-bottom: calc(14px + env(safe-area-inset-bottom, 8px)); /* keep buttons above nav bar */
     background: rgba(0,0,0,0.2);
     flex: 1;
     display: flex;
@@ -361,13 +365,29 @@ body.theme-cyan-night { --bg-card: #0a2535; --accent: #06b6d4; }
     overflow: hidden;
 }
 
-.button-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 7px;
-    margin-bottom: 12px;
-    overflow-y: auto;
+.button-grid-container {
+    display: flex;
+    gap: 8px;
     flex: 1;
+    overflow: hidden;
+}
+
+.number-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 7px;
+    flex: 3;
+    overflow-y: auto;
+    align-content: start;
+    padding: 2px;
+}
+
+.operator-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 7px;
+    flex: 1;
+    overflow-y: auto;
     align-content: start;
     padding: 2px;
 }
@@ -394,11 +414,21 @@ body.theme-cyan-night { --bg-card: #0a2535; --accent: #06b6d4; }
     background: var(--accent);
 }
 
+/* number buttons get a distinct background */
+.calc-btn.number-btn {
+    background: var(--num-btn-bg);
+    border-color: var(--num-btn-bg);
+}
+.calc-btn.number-btn:active {
+    background: var(--num-btn-hover);
+}
+
 .action-buttons {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     gap: 8px;
     flex-shrink: 0;
+    margin-top: 8px;
 }
 
 .action-btn {
@@ -529,7 +559,10 @@ body.theme-cyan-night { --bg-card: #0a2535; --accent: #06b6d4; }
         border: none;
         box-shadow: none;
     }
-    .button-grid {
+    .number-grid {
+        gap: 5px;
+    }
+    .operator-grid {
         gap: 5px;
     }
     .calc-btn {
