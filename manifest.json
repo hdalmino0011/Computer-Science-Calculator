@@ -1,6 +1,6 @@
 {
   "name": "Universal CS Calculator",
-  "short_name": "CS Calc",
+  "short_name": "Universal CS Calculator",
   "description": "Universal Computer Science Calculator by Hanz Dalmino",
   "start_url": "index.html",
   "display": "standalone",
