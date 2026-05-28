@@ -40,6 +40,9 @@
                 <button id="equalBtn" class="action-btn eval-btn">=</button>
             </div>
         </div>
+
+        <!-- Footer added here -->
+        <div class="app-footer">HDDev | All rights reserved 2026</div>
     </div>
 
     <div id="fullPageView" class="full-page-view" style="display: none;">
@@ -111,7 +114,6 @@
     navigator.serviceWorker.register('sw.js')
       .then(function(reg) {
         console.log('Service Worker registered');
-        // Check for updates periodically (every hour)
         setInterval(function() {
           reg.update();
         }, 60 * 60 * 1000);
