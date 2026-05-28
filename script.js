@@ -626,7 +626,6 @@ function hardResetAndRefresh() {
                 }
             });
         }
-        // If service worker is installed, try to unregister? Not needed, just reload.
         // Reload the page with cache-busting
         window.location.reload(true);
     }
