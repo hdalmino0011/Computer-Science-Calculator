@@ -16,7 +16,6 @@
     --btn-bg: #1e1e30;
     --btn-hover: #2d2d44;
     --steps-bg: #0a0a14;
-    /* number button highlight – a slightly muted accent */
     --num-btn-bg: #6d28d9;
     --num-btn-hover: #7c3aed;
 }
@@ -357,7 +356,7 @@ body.theme-cyan-night { --bg-card: #0a2535; --accent: #06b6d4; --num-btn-bg: #08
 
 .buttons-panel {
     padding: 8px 14px 14px;
-    padding-bottom: calc(14px + env(safe-area-inset-bottom, 8px)); /* keep buttons above nav bar */
+    padding-bottom: calc(14px + env(safe-area-inset-bottom, 8px));
     background: rgba(0,0,0,0.2);
     flex: 1;
     display: flex;
@@ -365,29 +364,13 @@ body.theme-cyan-night { --bg-card: #0a2535; --accent: #06b6d4; --num-btn-bg: #08
     overflow: hidden;
 }
 
-.button-grid-container {
-    display: flex;
-    gap: 8px;
-    flex: 1;
-    overflow: hidden;
-}
-
-.number-grid {
+.button-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     gap: 7px;
-    flex: 3;
+    margin-bottom: 12px;
     overflow-y: auto;
-    align-content: start;
-    padding: 2px;
-}
-
-.operator-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 7px;
     flex: 1;
-    overflow-y: auto;
     align-content: start;
     padding: 2px;
 }
@@ -414,7 +397,7 @@ body.theme-cyan-night { --bg-card: #0a2535; --accent: #06b6d4; --num-btn-bg: #08
     background: var(--accent);
 }
 
-/* number buttons get a distinct background */
+/* Number buttons get a distinct background */
 .calc-btn.number-btn {
     background: var(--num-btn-bg);
     border-color: var(--num-btn-bg);
@@ -559,10 +542,7 @@ body.theme-cyan-night { --bg-card: #0a2535; --accent: #06b6d4; --num-btn-bg: #08
         border: none;
         box-shadow: none;
     }
-    .number-grid {
-        gap: 5px;
-    }
-    .operator-grid {
+    .button-grid {
         gap: 5px;
     }
     .calc-btn {
