@@ -2,11 +2,13 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Universal CS Calculator | Hanz Dalmino</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#7c3aed">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 </head>
 <body>
 <div class="app-container">
@@ -20,7 +22,7 @@
         <div class="display-area">
             <div id="branchIndicator" class="branch-indicator">Universal (Scientific)</div>
             <div class="expression-input">
-                <input type="text" id="exprInput" placeholder="Enter expression ..." autocomplete="off">
+                <input type="text" id="exprInput" placeholder="Enter expression ..." autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
             </div>
             <div class="result-box">
                 <span class="result-label">=</span>
@@ -32,10 +34,10 @@
         <div class="buttons-panel">
             <div id="dynamicButtons" class="button-grid"></div>
             <div class="action-buttons">
-                <button id="equalBtn" class="action-btn eval-btn">=</button>
                 <button id="clearBtn" class="action-btn">C</button>
                 <button id="spaceBtn" class="action-btn">␣</button>
                 <button id="backBtn" class="action-btn">⌫</button>
+                <button id="equalBtn" class="action-btn eval-btn">=</button>
             </div>
         </div>
     </div>
@@ -95,8 +97,8 @@
 <script>
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js')
-      .then(() => console.log('Service Worker registered'))
-      .catch((err) => console.error('Service Worker failed', err));
+      .then(function() { console.log('Service Worker registered'); })
+      .catch(function(err) { console.error('Service Worker failed', err); });
   }
 </script>
 <script src="script.js"></script>
