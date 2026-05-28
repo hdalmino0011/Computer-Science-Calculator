@@ -231,18 +231,14 @@ function updateBranchIndicator() {
 
 // ========== ROBUST MODULO / PERCENTAGE HANDLER ==========
 function handleModuloAndPercentage(expr) {
-    // Temporarily protect genuine modulo operations (digit before and after %)
     let protectedExpr = expr.replace(/(\d)\s*%\s*(?=\d)/g, '$1__MOD__');
-    // Now convert remaining % that are attached to a number as percentage
     protectedExpr = protectedExpr.replace(/(\d+)\s*%/g, '($1/100)');
-    // Restore protected modulo operators
     protectedExpr = protectedExpr.replace(/__MOD__/g, ' % ');
     return protectedExpr;
 }
 
 // ========== AUTO-PARENTHESIZE FUNCTIONS ==========
 function autoParenthesizeFunctions(expr) {
-    // Wraps function names followed by a number without parentheses
     const funcs = ['sin', 'cos', 'tan', 'log', 'ln', 'sqrt', 'abs'];
     funcs.forEach(fn => {
         const regex = new RegExp(`Math\\.${fn}(\\d+(\\.\\d+)?)`, 'g');
@@ -259,7 +255,6 @@ function generateSteps(expr) {
     steps.push(`Original: ${expr}`);
     steps.push(`After symbol mapping: ${clean}`);
     
-    // Apply modulo/percentage handling
     let processed = handleModuloAndPercentage(clean);
     steps.push(`After modulo/percentage processing: ${processed}`);
     
@@ -274,8 +269,6 @@ function generateSteps(expr) {
     processed = processed.replace(/\bln\(/g, 'Math.log(');
     processed = processed.replace(/\bsqrt\(/g, 'Math.sqrt(');
     processed = processed.replace(/\babs\(/g, 'Math.abs(');
-    
-    // Auto-parenthesize functions that missed parentheses
     processed = autoParenthesizeFunctions(processed);
     
     steps.push(`Converted to JS: ${processed}`);
@@ -317,9 +310,7 @@ function evaluateUniversal(expr) {
         let clean = preprocessExpression(expr);
         if (!clean) return { result: '0', steps: 'Empty expression' };
         
-        // Modulo / percentage handling
         let processed = handleModuloAndPercentage(clean);
-        
         processed = processed.replace(/√/g, 'sqrt').replace(/\^/g, '**');
         processed = processed.replace(/(\d+)!/g, (_, n) => `fact(${n})`);
         processed = processed.replace(/\bAND\b/gi, '&&').replace(/\bOR\b/gi, '||').replace(/\bNOT\b/gi, '!');
@@ -331,8 +322,6 @@ function evaluateUniversal(expr) {
         processed = processed.replace(/\bln\(/g, 'Math.log(');
         processed = processed.replace(/\bsqrt\(/g, 'Math.sqrt(');
         processed = processed.replace(/\babs\(/g, 'Math.abs(');
-        
-        // Auto-parenthesize for functions used without parentheses
         processed = autoParenthesizeFunctions(processed);
         
         const fn = new Function('factorial', 'return (' + processed + ')');
@@ -550,7 +539,7 @@ function showHelpPage() {
             <p><strong>Tangent:</strong> tan45</p>
             <p><strong>Log base 10:</strong> log100 or log(100)</p>
             <p><strong>Natural Log (ln):</strong> ln2.718</p>
-            <p>You can type them with or without parentheses – the calculator automatically adds them if missing.</p>
+            <p>You can type them with or without parentheses.</p>
 
             <h3>--- RELATIONAL OPERATORS ---</h3>
             <p><strong>Equal:</strong> 5 == 5 (result: true)</p>
@@ -604,6 +593,44 @@ function showHelpPage() {
         </div>
     `;
     showFullPage('HELP / HOW TO USE', helpHtml);
+}
+
+function showPrivacyPage() {
+    const privacyHtml = `
+        <div class="about-text" style="font-size:0.8rem;">
+            <h2>PRIVACY POLICY</h2>
+            <p style="font-size:0.75rem; color:var(--text-secondary); margin-bottom:20px;">Last updated: May 2026</p>
+
+            <h3>1. Introduction</h3>
+            <p>This privacy policy applies to the <strong>Universal CS Calculator</strong> application developed by Hanz Dalmino. Your privacy is important, and this policy explains how your information is handled when you use the app.</p>
+
+            <h3>2. Data Collection</h3>
+            <p><strong>We do not collect any personal data.</strong> The app operates entirely on your device. All calculations, history, and preferences are stored locally using your device's internal storage (localStorage) and are never transmitted to any server or third party.</p>
+
+            <h3>3. Information Stored Locally</h3>
+            <p>Calculation history, theme preference, and font preference are stored only on your device and can be cleared at any time using the "Clear Cache" button within the app or by clearing your browser data.</p>
+
+            <h3>4. Third-Party Services</h3>
+            <p>This application does not use any third-party analytics, advertising, or tracking services. No data is shared with any external parties.</p>
+
+            <h3>5. Internet Usage</h3>
+            <p>The app works completely offline after the first visit. An internet connection is only required for the initial installation or when updating the app.</p>
+
+            <h3>6. Children's Privacy</h3>
+            <p>This application does not collect any personal information from anyone, including children under the age of 13.</p>
+
+            <h3>7. Changes to This Policy</h3>
+            <p>Any changes to this privacy policy will be reflected on this page. Continued use of the app after changes constitutes acceptance of the updated policy.</p>
+
+            <h3>8. Contact</h3>
+            <p>If you have any questions about this privacy policy, you can contact the developer through the GitHub repository or email:</p>
+            <p style="text-align:center; margin-top:10px;">
+                <a href="https://hdalmino0011.github.io/Computer-Science-Calculator/" style="color:#7c3aed; font-weight:bold;">Calculator Website</a>
+            </p>
+            <p style="text-align:center;">Email: <a href="mailto:dalminohanz14@gmail.com" style="color:#7c3aed;">dalminohanz14@gmail.com</a></p>
+        </div>
+    `;
+    showFullPage('PRIVACY & POLICY', privacyHtml);
 }
 
 function showThemesPage() {
@@ -712,6 +739,7 @@ function init() {
     });
 
     document.getElementById('drawerHelpBtn').onclick = () => { toggleDrawer(false); showHelpPage(); };
+    document.getElementById('drawerPrivacyBtn').onclick = () => { toggleDrawer(false); showPrivacyPage(); };
     document.getElementById('drawerThemesBtn').onclick = () => { toggleDrawer(false); showThemesPage(); };
     document.getElementById('drawerFontBtn').onclick = () => { toggleDrawer(false); showFontPage(); };
     document.getElementById('drawerHistoryBtn').onclick = () => { toggleDrawer(false); showHistoryPage(); };
