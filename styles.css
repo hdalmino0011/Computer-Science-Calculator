@@ -290,14 +290,14 @@ body.theme-cyan-night { --bg-card: #0a2535; --accent: #06b6d4; --num-btn-bg: #08
     transform: scale(0.95);
 }
 
-/* Footer styling */
+/* Footer styling - now centered at bottom */
 .app-footer {
     text-align: center;
     font-size: 0.65rem;
     color: var(--text-secondary);
     opacity: 0.6;
     padding: 12px 10px 20px;
-    margin-top: 5px;
+    margin-top: auto;      /* pushes footer to bottom */
     letter-spacing: 0.5px;
     flex-shrink: 0;
 }
