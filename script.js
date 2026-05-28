@@ -229,6 +229,28 @@ function updateBranchIndicator() {
     branchIndicator.textContent = branchNames[currentBranch] || 'Universal (Scientific)';
 }
 
+// ========== ROBUST MODULO / PERCENTAGE HANDLER ==========
+function handleModuloAndPercentage(expr) {
+    // Temporarily protect genuine modulo operations (digit before and after %)
+    let protectedExpr = expr.replace(/(\d)\s*%\s*(?=\d)/g, '$1__MOD__');
+    // Now convert remaining % that are attached to a number as percentage
+    protectedExpr = protectedExpr.replace(/(\d+)\s*%/g, '($1/100)');
+    // Restore protected modulo operators
+    protectedExpr = protectedExpr.replace(/__MOD__/g, ' % ');
+    return protectedExpr;
+}
+
+// ========== AUTO-PARENTHESIZE FUNCTIONS ==========
+function autoParenthesizeFunctions(expr) {
+    // Wraps function names followed by a number without parentheses
+    const funcs = ['sin', 'cos', 'tan', 'log', 'ln', 'sqrt', 'abs'];
+    funcs.forEach(fn => {
+        const regex = new RegExp(`Math\\.${fn}(\\d+(\\.\\d+)?)`, 'g');
+        expr = expr.replace(regex, `Math.${fn}($1)`);
+    });
+    return expr;
+}
+
 // ========== STEP-BY-STEP BREAKDOWN GENERATOR ==========
 function generateSteps(expr) {
     let steps = [];
@@ -237,9 +259,12 @@ function generateSteps(expr) {
     steps.push(`Original: ${expr}`);
     steps.push(`After symbol mapping: ${clean}`);
     
-    let processed = clean.replace(/√/g, 'sqrt').replace(/\^/g, '**');
+    // Apply modulo/percentage handling
+    let processed = handleModuloAndPercentage(clean);
+    steps.push(`After modulo/percentage processing: ${processed}`);
+    
+    processed = processed.replace(/√/g, 'sqrt').replace(/\^/g, '**');
     processed = processed.replace(/(\d+)!/g, (_, n) => `fact(${n})`);
-    processed = processed.replace(/(\d+)\s*%\s*(?![0-9])/g, (_, n) => `(${n}/100)`);
     processed = processed.replace(/\bAND\b/gi, '&&').replace(/\bOR\b/gi, '||').replace(/\bNOT\b/gi, '!');
     processed = processed.replace(/==/g, '===').replace(/!=/g, '!==');
     processed = processed.replace(/\bsin\(/g, 'Math.sin(');
@@ -249,6 +274,9 @@ function generateSteps(expr) {
     processed = processed.replace(/\bln\(/g, 'Math.log(');
     processed = processed.replace(/\bsqrt\(/g, 'Math.sqrt(');
     processed = processed.replace(/\babs\(/g, 'Math.abs(');
+    
+    // Auto-parenthesize functions that missed parentheses
+    processed = autoParenthesizeFunctions(processed);
     
     steps.push(`Converted to JS: ${processed}`);
     
@@ -289,9 +317,11 @@ function evaluateUniversal(expr) {
         let clean = preprocessExpression(expr);
         if (!clean) return { result: '0', steps: 'Empty expression' };
         
-        let processed = clean.replace(/√/g, 'sqrt').replace(/\^/g, '**');
+        // Modulo / percentage handling
+        let processed = handleModuloAndPercentage(clean);
+        
+        processed = processed.replace(/√/g, 'sqrt').replace(/\^/g, '**');
         processed = processed.replace(/(\d+)!/g, (_, n) => `fact(${n})`);
-        processed = processed.replace(/(\d+)\s*%\s*(?![0-9])/g, (_, n) => `(${n}/100)`);
         processed = processed.replace(/\bAND\b/gi, '&&').replace(/\bOR\b/gi, '||').replace(/\bNOT\b/gi, '!');
         processed = processed.replace(/==/g, '===').replace(/!=/g, '!==');
         processed = processed.replace(/\bsin\(/g, 'Math.sin(');
@@ -301,6 +331,9 @@ function evaluateUniversal(expr) {
         processed = processed.replace(/\bln\(/g, 'Math.log(');
         processed = processed.replace(/\bsqrt\(/g, 'Math.sqrt(');
         processed = processed.replace(/\babs\(/g, 'Math.abs(');
+        
+        // Auto-parenthesize for functions used without parentheses
+        processed = autoParenthesizeFunctions(processed);
         
         const fn = new Function('factorial', 'return (' + processed + ')');
         const result = fn(fact);
@@ -507,16 +540,17 @@ function showHelpPage() {
             <p><strong>Modulo:</strong> 10 % 3 or 10 % 3 (result: 1) — works with or without spaces</p>
             <p><strong>Percentage:</strong> 200% (result: 2) — type a number followed by %</p>
             <p><strong>Factorial:</strong> 5! (result: 120)</p>
-            <p><strong>Square Root:</strong> √(16) or sqrt(16) (result: 4) — MUST use parentheses</p>
+            <p><strong>Square Root:</strong> √16 or √(16) (both work now!)</p>
             <p><strong>Nth Root:</strong> 27^(1/3) (cube root, result: 3)</p>
-            <p><strong>Absolute Value:</strong> abs(-5) (result: 5)</p>
+            <p><strong>Absolute Value:</strong> abs(-5) or abs -5 (result: 5)</p>
 
             <h3>--- SCIENTIFIC FUNCTIONS ---</h3>
-            <p><strong>Sine:</strong> sin(30) — input in degrees is NOT auto-converted; use radians or convert manually</p>
-            <p><strong>Cosine:</strong> cos(0)</p>
-            <p><strong>Tangent:</strong> tan(45)</p>
-            <p><strong>Log base 10:</strong> log(100) (result: 2)</p>
-            <p><strong>Natural Log (ln):</strong> ln(2.718)</p>
+            <p><strong>Sine:</strong> sin30 or sin(30)</p>
+            <p><strong>Cosine:</strong> cos0 or cos(0)</p>
+            <p><strong>Tangent:</strong> tan45</p>
+            <p><strong>Log base 10:</strong> log100 or log(100)</p>
+            <p><strong>Natural Log (ln):</strong> ln2.718</p>
+            <p>You can type them with or without parentheses – the calculator automatically adds them if missing.</p>
 
             <h3>--- RELATIONAL OPERATORS ---</h3>
             <p><strong>Equal:</strong> 5 == 5 (result: true)</p>
@@ -564,9 +598,8 @@ function showHelpPage() {
             <p>This branch is a placeholder; use Universal for complex expressions.</p>
 
             <h3>--- IMPORTANT TIPS ---</h3>
-            <p>Always use parentheses with functions: <strong>√(16)</strong> NOT √16</p>
-            <p>For logical expressions with multiple operators, use parentheses to group: <strong>((5>3) AND (2<4)) OR (1==1)</strong></p>
-            <p>You can mix operators: <strong>(2+3)*4</strong>, <strong>5! + 3^2</strong></p>
+            <p>Functions like √, sin, cos, etc. now work both with and without parentheses: √16, sin30, log100.</p>
+            <p>Modulo (%) works perfectly between numbers; at the end of a number it acts as percentage (e.g., 200% = 2).</p>
             <p>If an expression fails in a specific branch, it automatically falls back to Universal mode with a warning message.</p>
         </div>
     `;
