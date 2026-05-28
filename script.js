@@ -7,7 +7,8 @@ const exprInput = document.getElementById('exprInput');
 const resultDisplay = document.getElementById('resultDisplay');
 const fallbackMessage = document.getElementById('fallbackMessage');
 const branchIndicator = document.getElementById('branchIndicator');
-const dynamicDiv = document.getElementById('dynamicButtons');
+const numberGrid = document.getElementById('numberButtons');
+const operatorGrid = document.getElementById('operatorButtons');
 const calculatorView = document.getElementById('calculatorView');
 const stepsView = document.getElementById('stepsView');
 const fullPageView = document.getElementById('fullPageView');
@@ -203,10 +204,31 @@ function getFullButtons(branch) {
     return filtered;
 }
 
+function isNumberButton(label) {
+    return /^[0-9.]$/.test(label);
+}
+
 function renderButtons() {
     const btns = getFullButtons(currentBranch);
-    dynamicDiv.innerHTML = '';
-    btns.forEach(label => {
+    // Separate numbers and operators
+    const numberBtns = btns.filter(label => isNumberButton(label));
+    const operatorBtns = btns.filter(label => !isNumberButton(label));
+
+    // Clear grids
+    numberGrid.innerHTML = '';
+    operatorGrid.innerHTML = '';
+
+    // Create number buttons
+    numberBtns.forEach(label => {
+        const btn = document.createElement('button');
+        btn.className = 'calc-btn number-btn';
+        btn.textContent = label;
+        btn.onclick = () => { exprInput.value += label; };
+        numberGrid.appendChild(btn);
+    });
+
+    // Create operator/function buttons
+    operatorBtns.forEach(label => {
         const btn = document.createElement('button');
         btn.className = 'calc-btn';
         btn.textContent = label;
@@ -221,7 +243,7 @@ function renderButtons() {
                 }
             };
         }
-        dynamicDiv.appendChild(btn);
+        operatorGrid.appendChild(btn);
     });
 }
 
@@ -525,71 +547,55 @@ function showHelpPage() {
             <p><strong>Subtraction:</strong> 10 - 4</p>
             <p><strong>Multiplication:</strong> 6 * 7 (or use × button)</p>
             <p><strong>Division:</strong> 15 / 3 (or use ÷ button)</p>
-            <p><strong>Exponent/Power:</strong> 2^3 or 5^2 (result: 8 and 25)</p>
-            <p><strong>Modulo:</strong> 10 % 3 or 10 % 3 (result: 1) — works with or without spaces</p>
-            <p><strong>Percentage:</strong> 200% (result: 2) — type a number followed by %</p>
+            <p><strong>Exponent/Power:</strong> 2^3 or 5^2</p>
+            <p><strong>Modulo:</strong> 10 % 3 (works with or without spaces)</p>
+            <p><strong>Percentage:</strong> 200% (result: 2)</p>
             <p><strong>Factorial:</strong> 5! (result: 120)</p>
-            <p><strong>Square Root:</strong> √16 or √(16) (both work now!)</p>
-            <p><strong>Nth Root:</strong> 27^(1/3) (cube root, result: 3)</p>
-            <p><strong>Absolute Value:</strong> abs(-5) or abs -5 (result: 5)</p>
+            <p><strong>Square Root:</strong> √16 or √(16)</p>
+            <p><strong>Nth Root:</strong> 27^(1/3)</p>
+            <p><strong>Absolute Value:</strong> abs(-5)</p>
 
             <h3>--- SCIENTIFIC FUNCTIONS ---</h3>
             <p><strong>Sine:</strong> sin30 or sin(30)</p>
-            <p><strong>Cosine:</strong> cos0 or cos(0)</p>
+            <p><strong>Cosine:</strong> cos0</p>
             <p><strong>Tangent:</strong> tan45</p>
-            <p><strong>Log base 10:</strong> log100 or log(100)</p>
-            <p><strong>Natural Log (ln):</strong> ln2.718</p>
-            <p>You can type them with or without parentheses.</p>
+            <p><strong>Log base 10:</strong> log100</p>
+            <p><strong>Natural Log:</strong> ln2.718</p>
 
             <h3>--- RELATIONAL OPERATORS ---</h3>
-            <p><strong>Equal:</strong> 5 == 5 (result: true)</p>
+            <p><strong>Equal:</strong> 5 == 5</p>
             <p><strong>Not Equal:</strong> 5 != 3 or 5 ≠ 3</p>
-            <p><strong>Greater Than:</strong> 8 > 3</p>
-            <p><strong>Less Than:</strong> 3 < 8</p>
-            <p><strong>Greater or Equal:</strong> 5 >= 5 or 5 ≥ 5</p>
-            <p><strong>Less or Equal:</strong> 4 <= 5 or 4 ≤ 5</p>
+            <p><strong>Greater/Less:</strong> 8 > 3, 3 < 8</p>
+            <p><strong>Greater/Equal:</strong> 5 >= 5 or 5 ≥ 5</p>
+            <p><strong>Less/Equal:</strong> 4 <= 5 or 4 ≤ 5</p>
 
             <h3>--- LOGICAL OPERATORS ---</h3>
-            <p><strong>AND:</strong> (5 > 3) AND (2 < 4) — or use && or ∧</p>
-            <p><strong>OR:</strong> (1 > 5) OR (3 == 3) — or use || or ∨</p>
-            <p><strong>NOT:</strong> NOT (5 > 3) — or use ! or ¬</p>
-            <p><strong>XOR:</strong> TRUE XOR FALSE</p>
-            <p><strong>IMPLIES:</strong> TRUE IMPLIES FALSE (result: false)</p>
-            <p><strong>EQUIV:</strong> TRUE EQUIV TRUE (result: true)</p>
+            <p><strong>AND:</strong> (5>3) AND (2<4) — also && or ∧</p>
+            <p><strong>OR:</strong> (1>5) OR (3==3) — also || or ∨</p>
+            <p><strong>NOT:</strong> NOT(5>3) — also ! or ¬</p>
+            <p><strong>XOR/IMPLIES/EQUIV:</strong> TRUE XOR FALSE, etc.</p>
 
             <h3>--- COMBINATORICS ---</h3>
-            <p><strong>Combination (nCr):</strong> nCr(5,2) or nCr 5,2 (result: 10)</p>
-            <p><strong>Permutation (nPr):</strong> nPr(5,2) or nPr 5,2 (result: 20)</p>
+            <p><strong>nCr:</strong> nCr(5,2)</p>
+            <p><strong>nPr:</strong> nPr(5,2)</p>
 
             <h3>--- NUMBER THEORY ---</h3>
-            <p><strong>GCD:</strong> gcd(12,8) or gcd 12,8 (result: 4)</p>
-            <p><strong>LCM:</strong> lcm(12,8) or lcm 12,8 (result: 24)</p>
-            <p><strong>Modulo (function):</strong> mod(10,3) or mod 10,3 (result: 1)</p>
-            <p><strong>Prime Check:</strong> prime?(7) (result: true)</p>
+            <p><strong>GCD:</strong> gcd(12,8)</p>
+            <p><strong>LCM:</strong> lcm(12,8)</p>
+            <p><strong>Modulo:</strong> mod(10,3)</p>
+            <p><strong>Prime:</strong> prime?(7)</p>
 
-            <h3>--- NUMBER SYSTEM CONVERSIONS ---</h3>
-            <p>Use the Conversion branch buttons. Format: <strong>DEC → BINARY 255</strong></p>
-            <p>Or type: DEC → BINARY 255, BIN → DECIMAL 1010, DEC → HEX 255, HEX → DECIMAL FF, DEC → OCT 64, OCT → DECIMAL 100, BIN → HEX 1111</p>
+            <h3>--- CONVERSIONS ---</h3>
+            <p>Use Conversion branch buttons, e.g. <strong>DEC → BINARY 255</strong></p>
 
             <h3>--- SET THEORY ---</h3>
-            <p><strong>Union:</strong> UNION</p>
-            <p><strong>Intersection:</strong> ∩</p>
-            <p><strong>Complement:</strong> COMPLEMENT</p>
-            <p><strong>Difference:</strong> \\</p>
-            <p><strong>Subset:</strong> SUBSET</p>
-            <p><strong>Powerset:</strong> POWERSET</p>
+            <p>UNION, ∩, COMPLEMENT, \\, SUBSET, POWERSET</p>
 
             <h3>--- MATRIX ---</h3>
-            <p><strong>Determinant 2x2:</strong> det2x2(a,b,c,d) — for matrix [a b; c d]</p>
-            <p><strong>Example:</strong> det2x2(1,2,3,4) — det = 1*4 - 2*3 = -2</p>
+            <p>det2x2(a,b,c,d)</p>
 
-            <h3>--- COMPLEX NUMBERS ---</h3>
-            <p>This branch is a placeholder; use Universal for complex expressions.</p>
-
-            <h3>--- IMPORTANT TIPS ---</h3>
-            <p>Functions like √, sin, cos, etc. now work both with and without parentheses: √16, sin30, log100.</p>
-            <p>Modulo (%) works perfectly between numbers; at the end of a number it acts as percentage (e.g., 200% = 2).</p>
-            <p>If an expression fails in a specific branch, it automatically falls back to Universal mode with a warning message.</p>
+            <h3>--- COMPLEX ---</h3>
+            <p>Placeholder; use Universal for arithmetic.</p>
         </div>
     `;
     showFullPage('HELP / HOW TO USE', helpHtml);
@@ -600,34 +606,20 @@ function showPrivacyPage() {
         <div class="about-text" style="font-size:0.8rem;">
             <h2>PRIVACY POLICY</h2>
             <p style="font-size:0.75rem; color:var(--text-secondary); margin-bottom:20px;">Last updated: May 2026</p>
-
             <h3>1. Introduction</h3>
-            <p>This privacy policy applies to the <strong>Universal CS Calculator</strong> application developed by Hanz Dalmino. Your privacy is important, and this policy explains how your information is handled when you use the app.</p>
-
+            <p>This privacy policy applies to the <strong>Universal CS Calculator</strong> application developed by Hanz Dalmino.</p>
             <h3>2. Data Collection</h3>
-            <p><strong>We do not collect any personal data.</strong> The app operates entirely on your device. All calculations, history, and preferences are stored locally using your device's internal storage (localStorage) and are never transmitted to any server or third party.</p>
-
+            <p><strong>We do not collect any personal data.</strong></p>
             <h3>3. Information Stored Locally</h3>
-            <p>Calculation history, theme preference, and font preference are stored only on your device and can be cleared at any time using the "Clear Cache" button within the app or by clearing your browser data.</p>
-
+            <p>Calculation history, theme, and font preferences are stored only on your device.</p>
             <h3>4. Third-Party Services</h3>
-            <p>This application does not use any third-party analytics, advertising, or tracking services. No data is shared with any external parties.</p>
-
+            <p>None.</p>
             <h3>5. Internet Usage</h3>
-            <p>The app works completely offline after the first visit. An internet connection is only required for the initial installation or when updating the app.</p>
-
+            <p>Works offline after first launch.</p>
             <h3>6. Children's Privacy</h3>
-            <p>This application does not collect any personal information from anyone, including children under the age of 13.</p>
-
-            <h3>7. Changes to This Policy</h3>
-            <p>Any changes to this privacy policy will be reflected on this page. Continued use of the app after changes constitutes acceptance of the updated policy.</p>
-
-            <h3>8. Contact</h3>
-            <p>If you have any questions about this privacy policy, you can contact the developer through the GitHub repository or email:</p>
-            <p style="text-align:center; margin-top:10px;">
-                <a href="https://hdalmino0011.github.io/Computer-Science-Calculator/" style="color:#7c3aed; font-weight:bold;">Calculator Website</a>
-            </p>
-            <p style="text-align:center;">Email: <a href="mailto:dalminohanz14@gmail.com" style="color:#7c3aed;">dalminohanz14@gmail.com</a></p>
+            <p>No data collected from anyone.</p>
+            <h3>7. Contact</h3>
+            <p>Email: dalminohanz14@gmail.com</p>
         </div>
     `;
     showFullPage('PRIVACY & POLICY', privacyHtml);
@@ -691,23 +683,20 @@ function showAboutPage() {
             <h3>Developed by Hanz Dalmino</h3>
             <p>a Bachelor of Science in Information Technology student from Cebu Technological University - Main Campus</p>
             <h3>Purpose</h3>
-            <p>This Universal CS Calculator is specifically designed for students and professionals in <strong>Computer Science, Information Technology, Computer Engineering, and related fields</strong>. It provides step-by-step evaluation for a wide range of mathematical concepts essential to these disciplines.</p>
+            <p>This Universal CS Calculator is specifically designed for students and professionals in Computer Science, Information Technology, and Computer Engineering. It provides step-by-step evaluation for a wide range of mathematical concepts.</p>
             <h3>Topics Covered</h3>
             <ul>
                 <li>Arithmetic & Bitwise Operations</li>
                 <li>Relational and Logical Operators</li>
                 <li>Combinatorics (nCr, nPr, Factorials)</li>
                 <li>Boolean Algebra and Logic Gates</li>
-                <li>Set Theory (Union, Intersection, Complement, Subset)</li>
+                <li>Set Theory</li>
                 <li>Number Theory (GCD, LCM, Modulo, Primality)</li>
-                <li>Number System Conversions (Binary, Decimal, Hex, Octal)</li>
-                <li>Matrix Algebra (Determinants, basic operations)</li>
+                <li>Number System Conversions</li>
+                <li>Matrix Algebra</li>
                 <li>Complex Numbers</li>
-                <li>Scientific Functions (sin, cos, tan, log, ln, sqrt, abs)</li>
+                <li>Scientific Functions</li>
             </ul>
-            <h3>Why This Calculator?</h3>
-            <p>Unlike simple calculators, this tool shows every step of the evaluation, helping students understand the process behind the answer. It handles complex expressions mixing arithmetic, bitwise, relational, and logical operators in a single line.</p>
-            <p>It is also fully customizable with 12 themes and multiple fonts, and it works on desktop, tablet, and mobile devices.</p>
         </div>
     `;
     showFullPage('ABOUT', aboutHtml);
