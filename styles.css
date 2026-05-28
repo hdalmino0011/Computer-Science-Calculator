@@ -21,25 +21,25 @@
     --num-btn-hover: #8b5cf6;
 }
 
-body {
-    font-family: 'Times New Roman', Times, serif;
-    background: var(--bg-card);
-    color: var(--text-primary);
-    min-height: 100vh;
-    height: 100vh;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 0;
+/* Fix for the bottom space issue */
+html, body {
+    width: 100%;
+    height: 100%;
     margin: 0;
-    overflow: hidden;
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
+    padding: 0;
+    overflow: hidden; /* Prevents any scrolling of the main body */
+    position: fixed; /* Prevents rubber-banding on iOS */
+    background: var(--bg-card);
 }
 
+body {
+    font-family: 'Times New Roman', Times, serif;
+    color: var(--text-primary);
+    display: flex;
+    flex-direction: column;
+}
+
+/* Theme definitions remain the same */
 body.theme-default { --bg-card: #1a1a2e; --accent: #7c3aed; --num-btn-bg: #6d28d9; --num-btn-hover: #8b5cf6; }
 body.theme-obsidian { --bg-card: #2d2d2d; --accent: #a855f7; --num-btn-bg: #9333ea; --num-btn-hover: #a855f7; }
 body.theme-royalblue { --bg-card: #0f2a4a; --accent: #3b82f6; --num-btn-bg: #1d4ed8; --num-btn-hover: #3b82f6; }
@@ -55,9 +55,8 @@ body.theme-cyan-night { --bg-card: #0a2535; --accent: #06b6d4; --num-btn-bg: #08
 
 .app-container {
     width: 100%;
-    height: 100%;
+    height: 100dvh; /* Use Dynamic Viewport Height for mobile browsers */
     background: var(--bg-card);
-    overflow: hidden;
     display: flex;
     flex-direction: column;
     position: relative;
@@ -597,7 +596,6 @@ body.theme-cyan-night { --bg-card: #0a2535; --accent: #06b6d4; --num-btn-bg: #08
     display: block;
 }
 
-/* Update Modal */
 .update-modal {
     position: fixed;
     top: 0;
@@ -608,7 +606,6 @@ body.theme-cyan-night { --bg-card: #0a2535; --accent: #06b6d4; --num-btn-bg: #08
     display: flex;
     align-items: center;
     justify-content: center;
-    font-family: 'Times New Roman', Times, serif;
 }
 
 .update-modal-overlay {
@@ -656,116 +653,9 @@ body.theme-cyan-night { --bg-card: #0a2535; --accent: #06b6d4; --num-btn-bg: #08
     flex: 1;
 }
 
-/* Mobile safe area support */
-@supports (padding-bottom: env(safe-area-inset-bottom)) {
-    @media (max-width: 768px) {
-        .buttons-panel {
-            padding-bottom: calc(14px + env(safe-area-inset-bottom));
-        }
-    }
-}
-
-@media (min-width: 769px) {
-    .app-container {
-        max-width: 100%;
-        height: 100vh;
-        border-radius: 0;
-        border: none;
-        box-shadow: none;
-    }
-}
-
 @media (max-width: 768px) {
-    .app-container {
-        height: 100vh;
-        max-height: none;
-        border-radius: 0;
-        border: none;
-        box-shadow: none;
-    }
-
-    .button-grid {
-        gap: 5px;
-    }
-
-    .calc-btn {
-        font-size: 0.75rem;
-        padding: 8px 0;
-        min-height: 40px;
-    }
-
-    .action-buttons {
-        gap: 6px;
-        margin-top: 8px;
-    }
-
-    .action-btn {
-        min-height: 44px;
-        font-size: 0.85rem;
-        padding: 10px;
-    }
-
     .drawer {
         width: 85%;
         left: -85%;
-    }
-
-    .title {
-        font-size: 0.75rem;
-    }
-
-    .display-area {
-        padding: 12px;
-    }
-}
-
-@media (max-height: 500px) {
-    .display-area {
-        padding: 8px;
-    }
-
-    .branch-indicator {
-        padding: 4px 10px;
-        font-size: 0.6rem;
-        margin-bottom: 4px;
-    }
-
-    .expression-input {
-        margin-bottom: 6px;
-    }
-
-    #exprInput {
-        padding: 6px 10px;
-        font-size: 0.85rem;
-    }
-
-    .result-box {
-        padding: 4px 10px;
-        font-size: 1rem;
-    }
-
-    .buttons-panel {
-        padding: 6px 10px 10px;
-    }
-
-    .button-grid {
-        gap: 4px;
-    }
-
-    .calc-btn {
-        min-height: 32px;
-        font-size: 0.65rem;
-        padding: 4px 0;
-    }
-
-    .action-buttons {
-        gap: 4px;
-        margin-top: 6px;
-    }
-
-    .action-btn {
-        min-height: 36px;
-        font-size: 0.75rem;
-        padding: 6px;
     }
 }
