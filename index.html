@@ -94,6 +94,18 @@
 </div>
 <div id="overlay" class="overlay"></div>
 
+<div id="updateModal" class="update-modal" style="display: none;">
+    <div class="update-modal-overlay"></div>
+    <div class="update-modal-content">
+        <div class="update-modal-title">UPDATE AVAILABLE</div>
+        <div class="update-modal-message" id="updateMessage">A new version is available.</div>
+        <div class="update-modal-buttons">
+            <button id="updateNotNowBtn" class="action-btn">NOT NOW</button>
+            <button id="updateNowBtn" class="action-btn eval-btn">UPDATE NOW</button>
+        </div>
+    </div>
+</div>
+
 <script>
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js')
