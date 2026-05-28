@@ -220,12 +220,12 @@ body.theme-cyan-night { --bg-card: #0a2535; --accent: #06b6d4; }
 .back-btn {
     background: var(--accent);
     border: none;
-    padding: 8px 16px;
-    border-radius: 30px;
+    padding: 5px 12px;
+    border-radius: 20px;
     color: white;
     font-weight: bold;
     cursor: pointer;
-    font-size: 0.85rem;
+    font-size: 0.7rem;
 }
 
 .back-btn:hover {
