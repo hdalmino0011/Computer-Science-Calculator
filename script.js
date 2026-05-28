@@ -210,30 +210,33 @@ function isNumberButton(label) {
 
 function renderButtons() {
     const btns = getFullButtons(currentBranch);
-    // Separate numbers and operators
     const numberBtns = btns.filter(label => isNumberButton(label));
     const operatorBtns = btns.filter(label => !isNumberButton(label));
 
-    // Clear grids
-    numberGrid.innerHTML = '';
-    operatorGrid.innerHTML = '';
+    // Clear grids safely
+    if (numberGrid) numberGrid.innerHTML = '';
+    if (operatorGrid) operatorGrid.innerHTML = '';
 
-    // Create number buttons
+    // Populate number buttons
     numberBtns.forEach(label => {
         const btn = document.createElement('button');
         btn.className = 'calc-btn number-btn';
         btn.textContent = label;
         btn.onclick = () => { exprInput.value += label; };
-        numberGrid.appendChild(btn);
+        if (numberGrid) numberGrid.appendChild(btn);
     });
 
-    // Create operator/function buttons
+    // Populate operator/function buttons
     operatorBtns.forEach(label => {
         const btn = document.createElement('button');
         btn.className = 'calc-btn';
         btn.textContent = label;
         if (label === 'C' || label === 'CLEAR') {
-            btn.onclick = () => { exprInput.value = ''; resultDisplay.textContent = '0'; fallbackMessage.style.display = 'none'; };
+            btn.onclick = () => { 
+                exprInput.value = ''; 
+                if (resultDisplay) resultDisplay.textContent = '0'; 
+                if (fallbackMessage) fallbackMessage.style.display = 'none'; 
+            };
         } else {
             btn.onclick = () => {
                 if (currentBranch === 'conversion' && label.includes('→')) {
@@ -243,7 +246,7 @@ function renderButtons() {
                 }
             };
         }
-        operatorGrid.appendChild(btn);
+        if (operatorGrid) operatorGrid.appendChild(btn);
     });
 }
 
