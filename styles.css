@@ -293,57 +293,40 @@ body.theme-cyan-night  { --bg-card: #071c26; --accent: #06b6d4; --accent-2: #67e
 
 .full-width-btn { width: 100%; margin-top: 15px; }
 
-/* ====== COMPACT FOOTER ====== */
 .app-footer {
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 6px;
-    text-align: center;
-    padding: 6px 10px 8px;
+    padding: 6px 10px;
     margin-top: auto;
     flex-shrink: 0;
-    position: relative;
-    flex-direction: column;
+    line-height: 1;
 }
 
-.app-footer::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background: linear-gradient(90deg, var(--accent), var(--accent-2));
-    opacity: 0.5;
-}
-
-.footer-content {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    margin-top: 6px;
-}
-
-.footer-mark {
-    font-family: var(--font-mono);
-    font-size: 0.5rem;
-    font-weight: 800;
-    letter-spacing: 0.5px;
-    color: #ffffff;
-    background: linear-gradient(135deg, var(--accent), var(--accent-2));
-    padding: 1px 6px;
-    border-radius: 4px;
-    line-height: 1.6;
+.footer-dot {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 6px color-mix(in srgb, var(--accent) 70%, transparent);
+    flex-shrink: 0;
 }
 
 .footer-text {
-    font-size: 0.55rem;
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
     font-weight: 500;
-    letter-spacing: 0.4px;
+    letter-spacing: 0.6px;
     color: var(--text-secondary);
-    opacity: 0.65;
+    opacity: 0.55;
+    white-space: nowrap;
+}
+
+.footer-sep {
+    margin: 0 5px;
+    color: var(--accent);
+    opacity: 0.8;
 }
 
 .full-page-view, .steps-view {
@@ -605,7 +588,7 @@ body.theme-cyan-night  { --bg-card: #071c26; --accent: #06b6d4; --accent-2: #67e
 @supports (padding-bottom: env(safe-area-inset-bottom)) {
     @media (max-width: 768px) {
         .buttons-panel { padding-bottom: calc(14px + env(safe-area-inset-bottom)); }
-        .app-footer { padding-bottom: calc(6px + env(safe-area-inset-bottom)); }
+        .app-footer { padding-bottom: calc(8px + env(safe-area-inset-bottom)); }
     }
 }
 
@@ -622,10 +605,8 @@ body.theme-cyan-night  { --bg-card: #071c26; --accent: #06b6d4; --accent-2: #67e
     .drawer { width: 85%; left: -85%; }
     .title { font-size: 0.68rem; }
     .display-area { padding: 12px; }
-    .app-footer { padding: 4px 10px 6px; }
-    .footer-mark { font-size: 0.45rem; padding: 1px 5px; }
-    .footer-text { font-size: 0.5rem; }
-    .footer-content { gap: 4px; margin-top: 4px; }
+    .app-footer { padding: 5px 10px; }
+    .footer-text { font-size: 0.56rem; }
 }
 
 @media (max-height: 560px) {
@@ -638,10 +619,9 @@ body.theme-cyan-night  { --bg-card: #071c26; --accent: #06b6d4; --accent-2: #67e
     .button-grid { gap: 4px; max-height: 32vh; }
     .calc-btn { min-height: 32px; font-size: 0.68rem; padding: 4px 2px; }
     .action-btn { min-height: 38px; font-size: 0.78rem; padding: 6px 4px; }
-    .app-footer { padding: 4px 8px 6px; }
-    .footer-mark { font-size: 0.4rem; padding: 1px 4px; }
-    .footer-text { font-size: 0.48rem; }
-    .footer-content { gap: 4px; margin-top: 4px; }
+    .app-footer { padding: 3px 8px; }
+    .footer-text { font-size: 0.5rem; }
+    .footer-dot { width: 3px; height: 3px; }
 }
 
 /* Focus visibility for accessibility */
