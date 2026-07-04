@@ -13,16 +13,18 @@
 <body>
 <div class="app-container">
     <div class="top-bar">
-        <button class="menu-btn" id="menuToggleBtn">☰</button>
-        <div class="title">UNIVERSAL CS CALCULATOR</div>
-        <div style="width: 40px;"></div>
+        <button class="menu-btn" id="menuToggleBtn" aria-label="Open menu">☰</button>
+        <div class="title-wrap">
+            <div class="title">UNIVERSAL CS CALCULATOR</div>
+            <div id="branchIndicator" class="branch-indicator">Universal (Scientific)</div>
+        </div>
+        <button class="menu-btn" id="ansToggleBtn" aria-label="Insert last answer" title="Insert last answer">ANS</button>
     </div>
 
     <div id="calculatorView" class="calculator-view">
         <div class="display-area">
-            <div id="branchIndicator" class="branch-indicator">Universal (Scientific)</div>
             <div class="expression-input">
-                <input type="text" id="exprInput" placeholder="Enter expression ..." autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+                <input type="text" id="exprInput" placeholder="Enter expression…" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" inputmode="none">
             </div>
             <div class="result-box">
                 <span class="result-label">=</span>
@@ -34,14 +36,14 @@
         <div class="buttons-panel">
             <div id="dynamicButtons" class="button-grid"></div>
             <div class="action-buttons">
-                <button id="clearBtn" class="action-btn">C</button>
-                <button id="spaceBtn" class="action-btn">␣</button>
-                <button id="backBtn" class="action-btn">⌫</button>
+                <button id="clearBtn" class="action-btn danger-btn">C</button>
+                <button id="leftBtn" class="action-btn nav-btn" aria-label="Move cursor left">◀</button>
+                <button id="rightBtn" class="action-btn nav-btn" aria-label="Move cursor right">▶</button>
+                <button id="backBtn" class="action-btn nav-btn" aria-label="Backspace">⌫</button>
                 <button id="equalBtn" class="action-btn eval-btn">=</button>
             </div>
         </div>
 
-        <!-- Footer added here -->
         <div class="app-footer">HDDev | All rights reserved 2026</div>
     </div>
 
@@ -109,14 +111,13 @@
     </div>
 </div>
 
+<div id="toast" class="toast"></div>
+
 <script>
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js')
       .then(function(reg) {
-        console.log('Service Worker registered');
-        setInterval(function() {
-          reg.update();
-        }, 60 * 60 * 1000);
+        setInterval(function() { reg.update(); }, 60 * 60 * 1000);
       })
       .catch(function(err) { console.error('Service Worker failed', err); });
   }
