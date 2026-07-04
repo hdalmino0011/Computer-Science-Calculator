@@ -1,6 +1,7 @@
-// STATE
+// ================= STATE =================
 var currentBranch = "universal";
 var historyEntries = [];
+var lastAnswer = 0;
 
 // DOM Elements
 var exprInput = document.getElementById('exprInput');
@@ -13,6 +14,7 @@ var stepsView = document.getElementById('stepsView');
 var fullPageView = document.getElementById('fullPageView');
 var fullPageTitle = document.getElementById('fullPageTitle');
 var fullPageContent = document.getElementById('fullPageContent');
+var toastEl = document.getElementById('toast');
 
 var branchNames = {
     'universal': 'Universal (Scientific)',
@@ -26,12 +28,29 @@ var branchNames = {
     'complex': 'Complex Numbers'
 };
 
-// ========== SYMBOL PRE-PROCESSOR ==========
+// ================= TOAST =================
+var toastTimer = null;
+function showToast(msg) {
+    if (!toastEl) return;
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function() { toastEl.classList.remove('show'); }, 1800);
+}
+
+// ================= HAPTIC FEEDBACK =================
+function buzz(ms) {
+    if (navigator.vibrate) {
+        try { navigator.vibrate(ms || 8); } catch (e) {}
+    }
+}
+
+// ================= SYMBOL PRE-PROCESSOR =================
 function preprocessExpression(expr) {
     var processed = expr;
     processed = processed.replace(/&&/g, ' AND ');
     processed = processed.replace(/\|\|/g, ' OR ');
-    processed = processed.replace(/!(?!=)/g, ' NOT ');
+    processed = processed.replace(/(?<![\d)])!(?!=)/g, ' NOT ');
     processed = processed.replace(/÷/g, '/');
     processed = processed.replace(/×/g, '*');
     processed = processed.replace(/≥/g, '>=');
@@ -43,19 +62,36 @@ function preprocessExpression(expr) {
     processed = processed.replace(/⊕/g, ' XOR ');
     processed = processed.replace(/→/g, ' IMPLIES ');
     processed = processed.replace(/↔/g, ' EQUIV ');
-    processed = processed.replace(/([^\s<>!])=([^\s=])/g, '$1==$2');
+    processed = processed.replace(/π/g, '(' + Math.PI + ')');
+    processed = processed.replace(/(?<![a-zA-Z])e(?![a-zA-Z(])/g, '(' + Math.E + ')');
+    processed = processed.replace(/ANS/gi, '(' + lastAnswer + ')');
+    // single "=" (not part of ==, !=, <=, >=) means equality comparison
+    processed = processed.replace(/([^\s<>!=])=([^=])/g, '$1==$2');
     return processed;
 }
 
-// ========== UTILITIES ==========
+// ================= UTILITIES =================
 function escapeHtml(s) {
     if (!s) return '';
-    return s.replace(/[&<>]/g, function(m) { 
-        return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m]; 
+    return s.toString().replace(/[&<>]/g, function(m) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m];
     });
 }
 
-// ========== VIEW SWITCHING ==========
+function fact(n) {
+    if (n < 0 || Math.floor(n) !== n) return NaN;
+    var r = 1;
+    for (var i = 2; i <= n; i++) r *= i;
+    return r;
+}
+
+function gcd(a, b) {
+    a = Math.abs(a); b = Math.abs(b);
+    while (b) { var t = b; b = a % b; a = t; }
+    return a;
+}
+
+// ================= VIEW SWITCHING =================
 function showCalculatorView() {
     calculatorView.style.display = 'flex';
     stepsView.style.display = 'none';
@@ -92,42 +128,31 @@ function showFullPage(title, contentHtml) {
     fullPageView.style.display = 'flex';
 }
 
-// ========== HISTORY ==========
+// ================= HISTORY =================
 function loadHistory() {
     try {
         var stored = localStorage.getItem('csCalcHistory');
         historyEntries = stored ? JSON.parse(stored) : [];
-    } catch (e) {
-        historyEntries = [];
-    }
+    } catch (e) { historyEntries = []; }
 }
 
 function saveHistory() {
-    try {
-        localStorage.setItem('csCalcHistory', JSON.stringify(historyEntries.slice(-50)));
-    } catch (e) {
-        console.warn('Could not save history');
-    }
+    try { localStorage.setItem('csCalcHistory', JSON.stringify(historyEntries.slice(0, 50))); }
+    catch (e) { console.warn('Could not save history'); }
 }
 
 function addHistory(expr, result, steps, branch) {
-    historyEntries.unshift({ 
-        expr: expr, 
-        result: result, 
-        steps: steps.substring(0, 300), 
-        branch: branch, 
-        date: new Date().toLocaleString() 
+    historyEntries.unshift({
+        expr: expr, result: result, steps: (steps || '').substring(0, 300),
+        branch: branch, date: new Date().toLocaleString()
     });
-    if (historyEntries.length > 50) historyEntries.pop();
+    if (historyEntries.length > 50) historyEntries.length = 50;
     saveHistory();
 }
 
-function clearHistory() {
-    historyEntries = [];
-    saveHistory();
-}
+function clearHistory() { historyEntries = []; saveHistory(); }
 
-// ========== THEMES (12) ==========
+// ================= THEMES =================
 var themes = ['default', 'obsidian', 'royalblue', 'orange', 'highcontrast', 'forest', 'crimson', 'slate', 'purple', 'midnight', 'sand', 'cyan-night'];
 var themeNames = ['Default', 'Obsidian', 'Royal Blue', 'Orange', 'High Contrast', 'Forest', 'Crimson', 'Slate', 'Purple', 'Midnight', 'Sand', 'Cyan Night'];
 
@@ -143,93 +168,74 @@ function initTheme() {
     else applyTheme('default');
 }
 
-// ========== FONTS ==========
+// ================= FONTS =================
 function initFont() {
     var saved = localStorage.getItem('appFont');
-    if (saved) document.body.style.fontFamily = saved;
-    else document.body.style.fontFamily = 'Times New Roman';
+    document.body.style.fontFamily = saved || "'Inter', 'Segoe UI', system-ui, sans-serif";
 }
-
 function setFont(font) {
     document.body.style.fontFamily = font;
     localStorage.setItem('appFont', font);
 }
 
-// ========== HELPER FUNCTIONS ==========
-function fact(n) {
-    if (n < 0) return NaN;
-    var r = 1;
-    for (var i = 2; i <= n; i++) r *= i;
-    return r;
-}
-
-function gcd(a, b) {
-    while (b) {
-        var t = b;
-        b = a % b;
-        a = t;
-    }
-    return a;
-}
-
-// ========== BUTTON DEFINITIONS PER BRANCH ==========
+// ================= BUTTON DEFINITIONS =================
 var universalButtons = [
-    '7', '8', '9', '/',
-    '4', '5', '6', '*',
+    '(', ')', 'π', 'e',
+    '7', '8', '9', '÷',
+    '4', '5', '6', '×',
     '1', '2', '3', '-',
-    '0', '.', '(', ')',
-    '+', '^', '√', '!',
-    '%', 'sin', 'cos', 'tan',
-    'log', 'ln', 'abs', 'AND',
-    'OR', 'NOT', 'XOR', '=',
-    '≠', '≥', '≤', '>',
-    '<', '÷', '×', '∧', '∨'
+    '0', '.', '%', '+',
+    '√', '^', '!', '==',
+    'sin', 'cos', 'tan', 'abs',
+    'log', 'ln', 'AND', 'OR',
+    'NOT', 'XOR', '≥', '≤',
+    '≠', '<', '>'
 ];
 
 var arithmeticButtons = [
-    '7', '8', '9', '/',
-    '4', '5', '6', '*',
+    '(', ')', '7', '8', '9', '÷',
+    '4', '5', '6', '×',
     '1', '2', '3', '-',
-    '0', '.', '(', ')',
-    '+', '%', '^', '&',
-    '|', '~', '<<', '>>',
-    '√', '!', 'abs', '≥',
-    '≤', '≠'
+    '0', '.', '%', '+',
+    '^', '√', '!', 'abs',
+    '&', '|', '~', '<<',
+    '>>', '≥', '≤', '≠'
 ];
 
 var combinatoricsButtons = [
-    '7', '8', '9', 'nCr',
-    '4', '5', '6', 'nPr',
+    '7', '8', '9', 'nCr(',
+    '4', '5', '6', 'nPr(',
     '1', '2', '3', '!',
     '0', '.', '(', ')',
-    ',', 'C', 'P'
+    ','
 ];
 
 var logicButtons = [
+    'TRUE', 'FALSE', '(', ')',
     '7', '8', '9', 'AND',
     '4', '5', '6', 'OR',
     '1', '2', '3', 'NOT',
-    '0', '.', '(', ')',
-    'TRUE', 'FALSE', 'XOR', 'IMPLIES',
-    'EQUIV', '+', '-', '*',
-    '/', '^', '==', '!=',
-    '>=', '<=', '>', '<'
+    '0', '.', 'XOR', 'IMPLIES',
+    'EQUIV', '==', '!=', '≥',
+    '≤', '>', '<'
 ];
 
 var settheoryButtons = [
-    '7', '8', '9', 'UNION',
-    '4', '5', '6', '∩',
-    '1', '2', '3', 'COMPLEMENT',
-    '0', '.', '{', '}',
-    ',', '\\', 'SUBSET', 'POWERSET'
+    'UNION', '∩', 'COMPLEMENT', '\\',
+    'SUBSET', 'POWERSET', '{', '}',
+    '7', '8', '9', ',',
+    '4', '5', '6',
+    '1', '2', '3',
+    '0'
 ];
 
 var numbertheoryButtons = [
-    '7', '8', '9', 'gcd',
-    '4', '5', '6', 'lcm',
-    '1', '2', '3', 'mod',
-    '0', '.', '(', ')',
-    'prime?', 'factor'
+    'gcd(', 'lcm(', 'mod(', 'prime?(',
+    'factor(', '(', ')', ',',
+    '7', '8', '9',
+    '4', '5', '6',
+    '1', '2', '3',
+    '0', '.'
 ];
 
 var conversionButtons = [
@@ -240,16 +246,20 @@ var conversionButtons = [
 ];
 
 var matrixButtons = [
-    'det2x2', 'add2x2',
-    'mul2x2', '[a b; c d]'
+    'det2x2(', 'add2x2(',
+    'mul2x2(', ',', '(', ')',
+    '7', '8', '9',
+    '4', '5', '6',
+    '1', '2', '3',
+    '0'
 ];
 
 var complexButtons = [
-    '7', '8', '9', 're',
-    '4', '5', '6', 'im',
-    '1', '2', '3', 'conj',
-    '0', '.', 'abs', 'arg',
-    '+', '-', '*', '/'
+    're(', 'im(', 'conj(', 'arg(',
+    '7', '8', '9', 'i',
+    '4', '5', '6', 'abs(',
+    '1', '2', '3', '(',
+    '0', '.', '+', '-', '*', '/', ')'
 ];
 
 function getFullButtons(branch) {
@@ -267,13 +277,48 @@ function getFullButtons(branch) {
     }
 }
 
-function isNumberButton(label) {
-    return /^[0-9.]$/.test(label);
+function isNumberButton(label) { return /^[0-9.]$/.test(label); }
+function isEqualsButton(label) { return label === '=='; }
+
+// ================= CARET-AWARE INPUT =================
+function insertAtCaret(text) {
+    var el = exprInput;
+    var start = el.selectionStart != null ? el.selectionStart : el.value.length;
+    var end = el.selectionEnd != null ? el.selectionEnd : el.value.length;
+    var before = el.value.substring(0, start);
+    var after = el.value.substring(end);
+    el.value = before + text + after;
+    var newPos = start + text.length;
+    el.focus();
+    el.setSelectionRange(newPos, newPos);
+}
+
+function moveCaret(delta) {
+    var el = exprInput;
+    var pos = (el.selectionStart != null ? el.selectionStart : el.value.length) + delta;
+    pos = Math.max(0, Math.min(el.value.length, pos));
+    el.focus();
+    el.setSelectionRange(pos, pos);
+}
+
+function backspaceAtCaret() {
+    var el = exprInput;
+    var start = el.selectionStart != null ? el.selectionStart : el.value.length;
+    var end = el.selectionEnd != null ? el.selectionEnd : el.value.length;
+    if (start === end) {
+        if (start === 0) return;
+        el.value = el.value.substring(0, start - 1) + el.value.substring(end);
+        el.focus();
+        el.setSelectionRange(start - 1, start - 1);
+    } else {
+        el.value = el.value.substring(0, start) + el.value.substring(end);
+        el.focus();
+        el.setSelectionRange(start, start);
+    }
 }
 
 function renderButtons() {
     var btns = getFullButtons(currentBranch);
-
     if (!dynamicDiv) return;
     dynamicDiv.innerHTML = '';
 
@@ -281,18 +326,17 @@ function renderButtons() {
         var label = btns[i];
         var btn = document.createElement('button');
 
-        if (isNumberButton(label)) {
-            btn.className = 'calc-btn number-btn';
-        } else {
-            btn.className = 'calc-btn operator-btn';
-        }
+        if (isNumberButton(label)) btn.className = 'calc-btn number-btn';
+        else if (isEqualsButton(label)) btn.className = 'calc-btn equals-btn';
+        else btn.className = 'calc-btn operator-btn';
 
         btn.textContent = label;
         btn.type = 'button';
 
         (function(btnLabel) {
-            if (btnLabel === 'C' || btnLabel === 'CLEAR') {
+            if (btnLabel === 'CLEAR') {
                 btn.onclick = function() {
+                    buzz();
                     exprInput.value = '';
                     resultDisplay.textContent = '0';
                     if (fallbackMessage) fallbackMessage.style.display = 'none';
@@ -300,12 +344,14 @@ function renderButtons() {
                 };
             } else {
                 btn.onclick = function() {
+                    buzz();
                     if (currentBranch === 'conversion' && btnLabel.indexOf('→') !== -1) {
                         exprInput.value = btnLabel + ' ';
+                        exprInput.focus();
+                        exprInput.setSelectionRange(exprInput.value.length, exprInput.value.length);
                     } else {
-                        exprInput.value += btnLabel;
+                        insertAtCaret(btnLabel);
                     }
-                    exprInput.focus();
                 };
             }
         })(label);
@@ -315,45 +361,50 @@ function renderButtons() {
 }
 
 function updateBranchIndicator() {
-    if (branchIndicator) {
-        branchIndicator.textContent = branchNames[currentBranch] || 'Universal (Scientific)';
+    if (branchIndicator) branchIndicator.textContent = branchNames[currentBranch] || 'Universal (Scientific)';
+}
+
+// ================= EXPRESSION COMPILER =================
+// Wraps bare function calls like "sin30" -> "sin(30)" while leaving "sin(30+5)" untouched.
+function wrapBareFunctionArgs(expr, fnNames) {
+    var out = expr;
+    for (var i = 0; i < fnNames.length; i++) {
+        var fn = fnNames[i];
+        var re = new RegExp('\\b' + fn + '\\s*(-?\\d+(?:\\.\\d+)?)', 'g');
+        out = out.replace(re, function(_, num) { return fn + '(' + num + ')'; });
     }
+    return out;
 }
 
-// ========== ROBUST MODULO / PERCENTAGE HANDLER ==========
-function handleModuloAndPercentage(expr) {
-    var protectedExpr = expr.replace(/(\d)\s*%\s*(?=\d)/g, '$1__MOD__');
-    protectedExpr = protectedExpr.replace(/(\d+)\s*%/g, '($1/100)');
-    protectedExpr = protectedExpr.replace(/__MOD__/g, ' % ');
-    return protectedExpr;
-}
-
-// ========== AUTO-PARENTHESIZE FUNCTIONS ==========
-function autoParenthesizeFunctions(expr) {
-    var funcs = ['sin', 'cos', 'tan', 'log', 'ln', 'sqrt', 'abs'];
-    for (var i = 0; i < funcs.length; i++) {
-        var fn = funcs[i];
-        var regex = new RegExp('Math\\.' + fn + '(\\d+(\\.\\d+)?)', 'g');
-        expr = expr.replace(regex, 'Math.' + fn + '($1)');
-    }
-    return expr;
-}
-
-// ========== STEP-BY-STEP BREAKDOWN GENERATOR ==========
-function generateSteps(expr) {
-    var steps = [];
+function compileToJS(expr) {
     var clean = preprocessExpression(expr);
 
-    steps.push('Original: ' + expr);
-    steps.push('After symbol mapping: ' + clean);
+    // modulo (between two numbers) vs percentage (trailing)
+    var processed = clean.replace(/(\d)\s*%\s*(?=\d)/g, '$1__MOD__');
+    processed = processed.replace(/(\d+(?:\.\d+)?)\s*%/g, '($1/100)');
+    processed = processed.replace(/__MOD__/g, ' % ');
 
-    var processed = handleModuloAndPercentage(clean);
-    steps.push('After modulo/percentage processing: ' + processed);
+    // roots and powers
+    processed = processed.replace(/√/g, 'sqrt');
+    processed = processed.replace(/\^/g, '**');
 
-    processed = processed.replace(/√/g, 'sqrt').replace(/\^/g, '**');
-    processed = processed.replace(/(\d+)!/g, function(_, n) { return 'fact(' + n + ')'; });
+    // factorial: number or parenthesized group followed by !
+    processed = processed.replace(/(\d+(?:\.\d+)?|\([^()]*\))!(?!=)/g, function(_, g) { return 'fact(' + g + ')'; });
+
+    // bare function args without parens: sin30 -> sin(30)
+    processed = wrapBareFunctionArgs(processed, ['sin', 'cos', 'tan', 'log', 'ln', 'sqrt', 'abs']);
+
+    // logical words
     processed = processed.replace(/\bAND\b/gi, '&&').replace(/\bOR\b/gi, '||').replace(/\bNOT\b/gi, '!');
-    processed = processed.replace(/==/g, '===').replace(/!=/g, '!==');
+    processed = processed.replace(/\bXOR\b/gi, ' XORFN ');
+    processed = processed.replace(/\bIMPLIES\b/gi, ' IMPLIESFN ');
+    processed = processed.replace(/\bEQUIV\b/gi, ' EQUIVFN ');
+    processed = processed.replace(/\bTRUE\b/gi, 'true').replace(/\bFALSE\b/gi, 'false');
+
+    processed = processed.replace(/==/g, '===').replace(/!==?=/g, '!==');
+    processed = processed.replace(/!==(?!=)/g, '!==');
+
+    // function name -> Math.*
     processed = processed.replace(/\bsin\(/g, 'Math.sin(');
     processed = processed.replace(/\bcos\(/g, 'Math.cos(');
     processed = processed.replace(/\btan\(/g, 'Math.tan(');
@@ -361,64 +412,64 @@ function generateSteps(expr) {
     processed = processed.replace(/\bln\(/g, 'Math.log(');
     processed = processed.replace(/\bsqrt\(/g, 'Math.sqrt(');
     processed = processed.replace(/\babs\(/g, 'Math.abs(');
-    processed = autoParenthesizeFunctions(processed);
 
+    // custom logical binary ops -> function calls
+    processed = processed.replace(/(.+?)\s*XORFN\s*(.+)/, 'xorFn($1,$2)');
+    processed = processed.replace(/(.+?)\s*IMPLIESFN\s*(.+)/, 'impliesFn($1,$2)');
+    processed = processed.replace(/(.+?)\s*EQUIVFN\s*(.+)/, 'equivFn($1,$2)');
+
+    return processed;
+}
+
+function xorFn(a, b) { return (!!a) !== (!!b); }
+function impliesFn(a, b) { return (!a) || (!!b); }
+function equivFn(a, b) { return (!!a) === (!!b); }
+
+function runCompiled(processed) {
+    var fn = new Function('fact', 'xorFn', 'impliesFn', 'equivFn', 'return (' + processed + ')');
+    return fn(fact, xorFn, impliesFn, equivFn);
+}
+
+function generateSteps(expr) {
+    var steps = [];
+    var clean = preprocessExpression(expr);
+    steps.push('Original: ' + expr);
+    steps.push('After symbol mapping: ' + clean);
+
+    var processed = compileToJS(expr);
     steps.push('Converted to JS: ' + processed);
 
     var parenRegex = /\(([^()]+)\)/g;
-    var match;
-    var subExprs = [];
-    while ((match = parenRegex.exec(processed)) !== null) {
-        subExprs.push(match[1]);
-    }
+    var match, subExprs = [];
+    while ((match = parenRegex.exec(processed)) !== null) subExprs.push(match[1]);
 
     if (subExprs.length > 0) {
         steps.push('Found ' + subExprs.length + ' sub-expression(s) in parentheses:');
         for (var i = 0; i < subExprs.length; i++) {
             var sub = subExprs[i];
             try {
-                var fn = new Function('factorial', 'return (' + sub + ')');
-                var val = fn(fact);
+                var val = runCompiled(sub);
                 steps.push('  (' + sub + ') = ' + val);
-            } catch(e) {
-                steps.push('  (' + sub + ') = [sub-expression]');
-            }
+            } catch (e) { steps.push('  (' + sub + ') = [sub-expression]'); }
         }
     }
 
     try {
-        var fn = new Function('factorial', 'return (' + processed + ')');
-        var result = fn(fact);
+        var result = runCompiled(processed);
         steps.push('Final result: ' + result);
-    } catch(e) {
+    } catch (e) {
         steps.push('Error: ' + e.message);
     }
 
     return steps.join('\n');
 }
 
-// ========== EVALUATION ENGINE ==========
+// ================= EVALUATION ENGINE =================
 function evaluateUniversal(expr) {
     try {
-        var clean = preprocessExpression(expr);
-        if (!clean) return { result: '0', steps: 'Empty expression' };
-
-        var processed = handleModuloAndPercentage(clean);
-        processed = processed.replace(/√/g, 'sqrt').replace(/\^/g, '**');
-        processed = processed.replace(/(\d+)!/g, function(_, n) { return 'fact(' + n + ')'; });
-        processed = processed.replace(/\bAND\b/gi, '&&').replace(/\bOR\b/gi, '||').replace(/\bNOT\b/gi, '!');
-        processed = processed.replace(/==/g, '===').replace(/!=/g, '!==');
-        processed = processed.replace(/\bsin\(/g, 'Math.sin(');
-        processed = processed.replace(/\bcos\(/g, 'Math.cos(');
-        processed = processed.replace(/\btan\(/g, 'Math.tan(');
-        processed = processed.replace(/\blog\(/g, 'Math.log10(');
-        processed = processed.replace(/\bln\(/g, 'Math.log(');
-        processed = processed.replace(/\bsqrt\(/g, 'Math.sqrt(');
-        processed = processed.replace(/\babs\(/g, 'Math.abs(');
-        processed = autoParenthesizeFunctions(processed);
-
-        var fn = new Function('factorial', 'return (' + processed + ')');
-        var result = fn(fact);
+        if (!expr.trim()) return { result: '0', steps: 'Empty expression' };
+        var processed = compileToJS(expr);
+        var result = runCompiled(processed);
         var steps = generateSteps(expr);
         return { result: result, steps: steps };
     } catch (e) {
@@ -426,38 +477,37 @@ function evaluateUniversal(expr) {
     }
 }
 
+function evaluateArithmetic(expr) { return evaluateUniversal(expr); }
+function evaluateLogic(expr) { return evaluateUniversal(expr); }
+
 function evaluateCombinatorics(expr) {
     var u = expr.toUpperCase();
     var m = u.match(/NCR\s*\(?\s*(\d+)\s*,\s*(\d+)/i);
     if (m) {
         var n = parseInt(m[1]), r = parseInt(m[2]);
         var res = fact(n) / (fact(r) * fact(n - r));
-        return { result: res, steps: 'C(' + n + ',' + r + ') = ' + n + '!/(' + r + '!(' + (n-r) + ')!) = ' + res };
+        return { result: res, steps: 'C(' + n + ',' + r + ') = ' + n + '!/(' + r + '!(' + (n - r) + ')!) = ' + res };
     }
     m = u.match(/NPR\s*\(?\s*(\d+)\s*,\s*(\d+)/i);
     if (m) {
-        var n = parseInt(m[1]), r = parseInt(m[2]);
-        var res = fact(n) / fact(n - r);
-        return { result: res, steps: 'P(' + n + ',' + r + ') = ' + n + '!/(' + (n-r) + ')! = ' + res };
+        var n2 = parseInt(m[1]), r2 = parseInt(m[2]);
+        var res2 = fact(n2) / fact(n2 - r2);
+        return { result: res2, steps: 'P(' + n2 + ',' + r2 + ') = ' + n2 + '!/(' + (n2 - r2) + ')! = ' + res2 };
     }
     m = u.match(/(\d+)!/);
     if (m) {
-        var n = parseInt(m[1]);
-        var res = fact(n);
-        return { result: res, steps: n + '! = ' + res };
+        var n3 = parseInt(m[1]);
+        var res3 = fact(n3);
+        return { result: res3, steps: n3 + '! = ' + res3 };
     }
     return { result: 'Error', steps: 'No combinatorics operation detected' };
-}
-
-function evaluateLogic(expr) {
-    return evaluateUniversal(expr);
 }
 
 function evaluateSetTheory(expr) {
     var u = expr.toUpperCase();
     if (u.indexOf('UNION') !== -1) return { result: 'A ∪ B', steps: 'Union: elements in A or B' };
     if (u.indexOf('∩') !== -1) return { result: 'A ∩ B', steps: 'Intersection: elements in both' };
-    if (u.indexOf('COMPLEMENT') !== -1) return { result: 'A\'', steps: 'Complement: elements not in A' };
+    if (u.indexOf('COMPLEMENT') !== -1) return { result: "A'", steps: 'Complement: elements not in A' };
     if (u.indexOf('\\') !== -1) return { result: 'A \\ B', steps: 'Difference: A minus B' };
     if (u.indexOf('SUBSET') !== -1) return { result: 'A ⊆ B', steps: 'Subset: all A in B' };
     if (u.indexOf('POWERSET') !== -1) return { result: 'P(A)', steps: 'Set of all subsets' };
@@ -474,22 +524,33 @@ function evaluateNumberTheory(expr) {
     }
     m = u.match(/lcm\s*\(?\s*(\d+)\s*,\s*(\d+)/);
     if (m) {
-        var a = parseInt(m[1]), b = parseInt(m[2]);
-        var l = a * b / gcd(a, b);
-        return { result: l, steps: 'LCM(' + a + ',' + b + ') = ' + l };
+        var a2 = parseInt(m[1]), b2 = parseInt(m[2]);
+        var l = (a2 * b2) / gcd(a2, b2);
+        return { result: l, steps: 'LCM(' + a2 + ',' + b2 + ') = ' + l };
     }
     m = u.match(/mod\s*\(?\s*(\d+)\s*,\s*(\d+)/);
     if (m) {
-        return { result: parseInt(m[1]) % parseInt(m[2]), steps: m[1] + ' mod ' + m[2] + ' = ' + (parseInt(m[1]) % parseInt(m[2])) };
+        var mm = parseInt(m[1]) % parseInt(m[2]);
+        return { result: mm, steps: m[1] + ' mod ' + m[2] + ' = ' + mm };
     }
-    m = u.match(/prime\?\s*(\d+)/);
+    m = u.match(/prime\?\s*\(?\s*(\d+)/);
     if (m) {
         var n = parseInt(m[1]);
         var isPrime = n > 1;
-        for (var i = 2; i <= Math.sqrt(n); i++) {
-            if (n % i === 0) { isPrime = false; break; }
-        }
+        for (var i = 2; i <= Math.sqrt(n); i++) { if (n % i === 0) { isPrime = false; break; } }
         return { result: isPrime, steps: n + ' is ' + (isPrime ? 'prime' : 'not prime') };
+    }
+    m = u.match(/factor\s*\(?\s*(\d+)/);
+    if (m) {
+        var num = parseInt(m[1]);
+        var factors = [];
+        var d = 2, x = num;
+        while (d * d <= x) {
+            while (x % d === 0) { factors.push(d); x /= d; }
+            d++;
+        }
+        if (x > 1) factors.push(x);
+        return { result: factors.join(' × '), steps: num + ' = ' + factors.join(' × ') };
     }
     return { result: 'Error', steps: 'No number theory operation detected' };
 }
@@ -499,11 +560,11 @@ function evaluateConversion(expr) {
     if (!m) return { result: 'Error', steps: 'Format: DEC → BINARY 255' };
     var type = m[1].toUpperCase(), val = m[2];
     try {
-        if (type === 'DEC → BINARY') return { result: parseInt(val).toString(2), steps: 'Convert ' + val + ' to binary = ' + parseInt(val).toString(2) };
+        if (type === 'DEC → BINARY') return { result: parseInt(val, 10).toString(2), steps: 'Convert ' + val + ' to binary = ' + parseInt(val, 10).toString(2) };
         if (type === 'BIN → DECIMAL') return { result: parseInt(val, 2), steps: 'Binary ' + val + ' to decimal = ' + parseInt(val, 2) };
-        if (type === 'DEC → HEX') return { result: parseInt(val).toString(16).toUpperCase(), steps: 'Convert ' + val + ' to hex = ' + parseInt(val).toString(16).toUpperCase() };
+        if (type === 'DEC → HEX') return { result: parseInt(val, 10).toString(16).toUpperCase(), steps: 'Convert ' + val + ' to hex = ' + parseInt(val, 10).toString(16).toUpperCase() };
         if (type === 'HEX → DECIMAL') return { result: parseInt(val, 16), steps: 'Hex ' + val + ' to decimal = ' + parseInt(val, 16) };
-        if (type === 'DEC → OCT') return { result: parseInt(val).toString(8), steps: 'Convert ' + val + ' to octal = ' + parseInt(val).toString(8) };
+        if (type === 'DEC → OCT') return { result: parseInt(val, 10).toString(8), steps: 'Convert ' + val + ' to octal = ' + parseInt(val, 10).toString(8) };
         if (type === 'OCT → DECIMAL') return { result: parseInt(val, 8), steps: 'Octal ' + val + ' to decimal = ' + parseInt(val, 8) };
         if (type === 'BIN → HEX') {
             var dec = parseInt(val, 2);
@@ -515,90 +576,103 @@ function evaluateConversion(expr) {
 
 function evaluateMatrix(expr) {
     var u = expr.toLowerCase();
-    var m = u.match(/det2x2\s*\(?\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
+    var m = u.match(/det2x2\s*\(?\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)/);
     if (m) {
-        var a = parseInt(m[1]), b = parseInt(m[2]), c = parseInt(m[3]), d = parseInt(m[4]);
+        var a = +m[1], b = +m[2], c = +m[3], d = +m[4];
         var det = a * d - b * c;
         return { result: det, steps: 'det([' + a + ' ' + b + '; ' + c + ' ' + d + ']) = ' + a + '*' + d + ' - ' + b + '*' + c + ' = ' + det };
+    }
+    m = u.match(/add2x2\s*\(?\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)/);
+    if (m) {
+        var vals = m.slice(1, 9).map(Number);
+        var r = [vals[0] + vals[4], vals[1] + vals[5], vals[2] + vals[6], vals[3] + vals[7]];
+        return { result: '[' + r[0] + ' ' + r[1] + '; ' + r[2] + ' ' + r[3] + ']', steps: 'Element-wise sum of the two 2x2 matrices' };
+    }
+    m = u.match(/mul2x2\s*\(?\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)/);
+    if (m) {
+        var v = m.slice(1, 9).map(Number);
+        var r1c1 = v[0] * v[4] + v[1] * v[6];
+        var r1c2 = v[0] * v[5] + v[1] * v[7];
+        var r2c1 = v[2] * v[4] + v[3] * v[6];
+        var r2c2 = v[2] * v[5] + v[3] * v[7];
+        return { result: '[' + r1c1 + ' ' + r1c2 + '; ' + r2c1 + ' ' + r2c2 + ']', steps: 'Matrix multiplication of two 2x2 matrices' };
     }
     return { result: 'Error', steps: 'No matrix operation detected' };
 }
 
 function evaluateComplex(expr) {
-    return { result: 'Error', steps: 'No complex operation detected' };
+    var m = expr.replace(/\s/g, '').match(/^(-?\d+(?:\.\d+)?)?([+-]\d+(?:\.\d+)?)?i$/);
+    var parseComplex = function(str) {
+        str = str.replace(/\s/g, '');
+        var mm = str.match(/^(-?\d+(?:\.\d+)?)?([+-]\d+(?:\.\d+)?)?i$/);
+        if (mm) return { re: mm[1] ? parseFloat(mm[1]) : 0, im: mm[2] ? parseFloat(mm[2]) : 1 };
+        var num = parseFloat(str);
+        if (!isNaN(num)) return { re: num, im: 0 };
+        return null;
+    };
+    var lower = expr.toLowerCase();
+    var fn = lower.match(/^(re|im|conj|abs|arg)\((.+)\)$/);
+    if (fn) {
+        var c = parseComplex(fn[2]);
+        if (!c) return { result: 'Error', steps: 'Could not parse complex number' };
+        if (fn[1] === 're') return { result: c.re, steps: 'Real part of ' + fn[2] + ' = ' + c.re };
+        if (fn[1] === 'im') return { result: c.im, steps: 'Imaginary part of ' + fn[2] + ' = ' + c.im };
+        if (fn[1] === 'conj') return { result: c.re + (-c.im >= 0 ? '+' : '') + (-c.im) + 'i', steps: 'Conjugate flips the sign of the imaginary part' };
+        if (fn[1] === 'abs') { var mag = Math.sqrt(c.re * c.re + c.im * c.im); return { result: mag, steps: '|a+bi| = sqrt(a²+b²) = ' + mag }; }
+        if (fn[1] === 'arg') { var ang = Math.atan2(c.im, c.re); return { result: ang, steps: 'arg(a+bi) = atan2(b,a) = ' + ang + ' rad' }; }
+    }
+    return { result: 'Error', steps: 'Use re(), im(), conj(), abs(), or arg() with a complex number like 3+4i' };
 }
 
-function evaluateArithmetic(expr) {
-    return evaluateUniversal(expr);
-}
-
-// ========== MAIN EVALUATE WITH FALLBACK ==========
+// ================= MAIN EVALUATE WITH FALLBACK =================
 function evaluate() {
     var raw = exprInput.value.trim();
-    if (!raw) {
-        resultDisplay.textContent = '0';
-        fallbackMessage.style.display = 'none';
-        return;
-    }
+    if (!raw) { resultDisplay.textContent = '0'; fallbackMessage.style.display = 'none'; return; }
 
     fallbackMessage.style.display = 'none';
+    var res, usedFallback = false;
 
-    var res;
-    var usedFallback = false;
-
-    if (currentBranch === 'universal') {
-        res = evaluateUniversal(raw);
-    } else if (currentBranch === 'arithmetic') {
-        res = evaluateArithmetic(raw);
-    } else if (currentBranch === 'combinatorics') {
-        res = evaluateCombinatorics(raw);
-    } else if (currentBranch === 'logic') {
-        res = evaluateLogic(raw);
-    } else if (currentBranch === 'settheory') {
-        res = evaluateSetTheory(raw);
-    } else if (currentBranch === 'numbertheory') {
-        res = evaluateNumberTheory(raw);
-    } else if (currentBranch === 'conversion') {
-        res = evaluateConversion(raw);
-    } else if (currentBranch === 'matrix') {
-        res = evaluateMatrix(raw);
-    } else if (currentBranch === 'complex') {
-        res = evaluateComplex(raw);
-    } else {
-        res = evaluateUniversal(raw);
-    }
+    if (currentBranch === 'universal') res = evaluateUniversal(raw);
+    else if (currentBranch === 'arithmetic') res = evaluateArithmetic(raw);
+    else if (currentBranch === 'combinatorics') res = evaluateCombinatorics(raw);
+    else if (currentBranch === 'logic') res = evaluateLogic(raw);
+    else if (currentBranch === 'settheory') res = evaluateSetTheory(raw);
+    else if (currentBranch === 'numbertheory') res = evaluateNumberTheory(raw);
+    else if (currentBranch === 'conversion') res = evaluateConversion(raw);
+    else if (currentBranch === 'matrix') res = evaluateMatrix(raw);
+    else if (currentBranch === 'complex') res = evaluateComplex(raw);
+    else res = evaluateUniversal(raw);
 
     if (res.result === 'Error' || (typeof res.result === 'string' && res.result.indexOf('Error') === 0)) {
-        var fallbackRes = evaluateUniversal(raw);
-        if (fallbackRes.result !== 'Error' && !(typeof fallbackRes.result === 'string' && fallbackRes.result.indexOf('Error') === 0)) {
-            usedFallback = true;
-            fallbackRes.steps = 'Expression entered does not match the branch, evaluating using universal branch.\n\n' + fallbackRes.steps;
-            res = fallbackRes;
+        if (currentBranch !== 'universal' && currentBranch !== 'arithmetic') {
+            var fallbackRes = evaluateUniversal(raw);
+            if (fallbackRes.result !== 'Error' && !(typeof fallbackRes.result === 'string' && fallbackRes.result.indexOf('Error') === 0)) {
+                usedFallback = true;
+                fallbackRes.steps = 'Expression entered does not match the branch, evaluating using universal branch.\n\n' + fallbackRes.steps;
+                res = fallbackRes;
+            }
         }
     }
 
-    var resStr = res.result.toString();
+    var resStr = res.result === undefined ? 'Error' : res.result.toString();
     resultDisplay.textContent = resStr;
 
-    if (usedFallback && currentBranch !== 'universal' && currentBranch !== 'arithmetic') {
+    if (typeof res.result === 'number' && isFinite(res.result)) lastAnswer = res.result;
+
+    if (usedFallback) {
         fallbackMessage.textContent = 'Expression entered does not match the branch, evaluating using universal branch.';
         fallbackMessage.style.display = 'block';
     }
 
     addHistory(raw, resStr, res.steps, currentBranch);
+    buzz(15);
     showStepsView(raw, resStr, res.steps || 'No detailed steps');
 }
 
-// ========== UI ACTIONS ==========
+// ================= UI ACTIONS =================
 function toggleDrawer(open) {
     document.getElementById('drawer').classList.toggle('open', open);
     document.getElementById('overlay').classList.toggle('active', open);
-}
-
-function resetSession() {
-    exprInput.value = '';
-    resultDisplay.textContent = '0';
-    fallbackMessage.style.display = 'none';
 }
 
 function clearCache() {
@@ -608,25 +682,21 @@ function clearCache() {
         saveHistory();
         initTheme();
         initFont();
-        resetSession();
-        alert('Cache cleared. Theme and font reset.');
+        exprInput.value = '';
+        resultDisplay.textContent = '0';
+        fallbackMessage.style.display = 'none';
+        showToast('Cache cleared. Theme and font reset.');
     }
 }
 
-// NEW: Hard reset that clears all caches and reloads the app
 function hardResetAndRefresh() {
     if (confirm('Reset session: This will clear all history, preferences, and reload the app. Continue?')) {
-        // Clear localStorage
         localStorage.clear();
-        // Clear any cached data from service worker caches
         if ('caches' in window) {
             caches.keys().then(function(names) {
-                for (var i = 0; i < names.length; i++) {
-                    caches.delete(names[i]);
-                }
+                for (var i = 0; i < names.length; i++) caches.delete(names[i]);
             });
         }
-        // Reload the page with cache-busting
         window.location.reload(true);
     }
 }
@@ -643,163 +713,94 @@ function showUpdateModal(message) {
     if (msgElem) msgElem.textContent = message || 'A new version is available. Please update.';
     updateModal.style.display = 'flex';
 }
+function hideUpdateModal() { if (updateModal) updateModal.style.display = 'none'; }
+function promptForUpdate(worker) { pendingUpdateWorker = worker; showUpdateModal('A new version of the app is ready. Update now?'); }
 
-function hideUpdateModal() {
-    if (updateModal) updateModal.style.display = 'none';
-}
-
-// Call this when a waiting service worker is found
-function promptForUpdate(worker) {
-    pendingUpdateWorker = worker;
-    showUpdateModal('A new version of the app is ready. Update now?');
-}
-
-// Setup service worker update detection
 function setupServiceWorkerUpdates() {
     if (!('serviceWorker' in navigator)) return;
     navigator.serviceWorker.ready.then(function(registration) {
-        // Check for updates every 30 minutes
-        setInterval(function() {
-            registration.update();
-        }, 30 * 60 * 1000);
-
-        // Listen for new service worker waiting
-        if (registration.waiting) {
-            promptForUpdate(registration.waiting);
-        }
+        setInterval(function() { registration.update(); }, 30 * 60 * 1000);
+        if (registration.waiting) promptForUpdate(registration.waiting);
         registration.addEventListener('updatefound', function() {
             var newWorker = registration.installing;
             newWorker.addEventListener('statechange', function() {
-                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                    promptForUpdate(newWorker);
-                }
+                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) promptForUpdate(newWorker);
             });
         });
     });
-
-    // Detect controller change (already updated)
-    navigator.serviceWorker.addEventListener('controllerchange', function() {
-        window.location.reload();
-    });
+    navigator.serviceWorker.addEventListener('controllerchange', function() { window.location.reload(); });
 }
 
 function doUpdateNow() {
-    if (pendingUpdateWorker) {
-        pendingUpdateWorker.postMessage({ action: 'skipWaiting' });
-        hideUpdateModal();
-    } else {
-        // Fallback: just reload
-        window.location.reload(true);
-    }
+    if (pendingUpdateWorker) { pendingUpdateWorker.postMessage({ action: 'skipWaiting' }); hideUpdateModal(); }
+    else window.location.reload(true);
 }
 
+// ================= CONTENT PAGES =================
 function showHelpPage() {
-    var helpHtml = '<div class="about-text" style="font-size:0.8rem;">' +
+    var helpHtml = '<div class="about-text">' +
         '<h3>HOW TO USE THIS CALCULATOR</h3>' +
-        
         '<h3>--- BASIC ARITHMETIC ---</h3>' +
         '<p><strong>Addition:</strong> 5 + 3</p>' +
         '<p><strong>Subtraction:</strong> 10 - 4</p>' +
-        '<p><strong>Multiplication:</strong> 6 * 7 (or use × button)</p>' +
-        '<p><strong>Division:</strong> 15 / 3 (or use ÷ button)</p>' +
-        '<p><strong>Exponent/Power:</strong> 2^3 or 5^2 (result: 8 and 25)</p>' +
-        '<p><strong>Modulo:</strong> 10 % 3 or 10 % 3 (result: 1) — works with or without spaces</p>' +
-        '<p><strong>Percentage:</strong> 200% (result: 2) — type a number followed by %</p>' +
-        '<p><strong>Factorial:</strong> 5! (result: 120)</p>' +
-        '<p><strong>Square Root:</strong> √16 or √(16) (both work now!)</p>' +
-        '<p><strong>Nth Root:</strong> 27^(1/3) (cube root, result: 3)</p>' +
-        '<p><strong>Absolute Value:</strong> abs(-5) or abs -5 (result: 5)</p>' +
-
+        '<p><strong>Multiplication:</strong> 6 × 7</p>' +
+        '<p><strong>Division:</strong> 15 ÷ 3</p>' +
+        '<p><strong>Exponent/Power:</strong> 2^3 or 5^2</p>' +
+        '<p><strong>Modulo:</strong> 10 % 3 (result: 1)</p>' +
+        '<p><strong>Percentage:</strong> 200% (result: 2)</p>' +
+        '<p><strong>Factorial:</strong> 5! or (3+2)!</p>' +
+        '<p><strong>Square Root:</strong> √16 or √(9+7)</p>' +
+        '<p><strong>Absolute Value:</strong> abs(-5) or abs-5</p>' +
+        '<p><strong>Constants:</strong> π and e are supported directly</p>' +
+        '<p><strong>Last Answer:</strong> tap ANS to reuse your previous result</p>' +
         '<h3>--- SCIENTIFIC FUNCTIONS ---</h3>' +
-        '<p><strong>Sine:</strong> sin30 or sin(30)</p>' +
-        '<p><strong>Cosine:</strong> cos0 or cos(0)</p>' +
-        '<p><strong>Tangent:</strong> tan45</p>' +
-        '<p><strong>Log base 10:</strong> log100 or log(100)</p>' +
-        '<p><strong>Natural Log (ln):</strong> ln2.718</p>' +
-        '<p>You can type them with or without parentheses.</p>' +
-
-        '<h3>--- RELATIONAL OPERATORS ---</h3>' +
-        '<p><strong>Equal:</strong> 5 == 5 (result: true)</p>' +
-        '<p><strong>Not Equal:</strong> 5 != 3 or 5 ≠ 3</p>' +
-        '<p><strong>Greater Than:</strong> 8 > 3</p>' +
-        '<p><strong>Less Than:</strong> 3 < 8</p>' +
-        '<p><strong>Greater or Equal:</strong> 5 >= 5 or 5 ≥ 5</p>' +
-        '<p><strong>Less or Equal:</strong> 4 <= 5 or 4 ≤ 5</p>' +
-
-        '<h3>--- LOGICAL OPERATORS ---</h3>' +
-        '<p><strong>AND:</strong> (5 > 3) AND (2 < 4) — or use && or ∧</p>' +
-        '<p><strong>OR:</strong> (1 > 5) OR (3 == 3) — or use || or ∨</p>' +
-        '<p><strong>NOT:</strong> NOT (5 > 3) — or use ! or ¬</p>' +
-        '<p><strong>XOR:</strong> TRUE XOR FALSE</p>' +
-        '<p><strong>IMPLIES:</strong> TRUE IMPLIES FALSE (result: false)</p>' +
-        '<p><strong>EQUIV:</strong> TRUE EQUIV TRUE (result: true)</p>' +
-
+        '<p><strong>Sine / Cosine / Tangent:</strong> sin30, cos(0), tan45</p>' +
+        '<p><strong>Log base 10 / Natural Log:</strong> log100, ln2.718</p>' +
+        '<h3>--- RELATIONAL & LOGICAL ---</h3>' +
+        '<p><strong>Equal:</strong> 5==5 &nbsp; <strong>Not equal:</strong> 5≠3</p>' +
+        '<p><strong>Comparisons:</strong> &gt; &lt; ≥ ≤</p>' +
+        '<p><strong>AND / OR / NOT / XOR / IMPLIES / EQUIV</strong> combine TRUE/FALSE values</p>' +
         '<h3>--- COMBINATORICS ---</h3>' +
-        '<p><strong>Combination (nCr):</strong> nCr(5,2) or nCr 5,2 (result: 10)</p>' +
-        '<p><strong>Permutation (nPr):</strong> nPr(5,2) or nPr 5,2 (result: 20)</p>' +
-
+        '<p>nCr(5,2) = 10 &nbsp; nPr(5,2) = 20</p>' +
         '<h3>--- NUMBER THEORY ---</h3>' +
-        '<p><strong>GCD:</strong> gcd(12,8) or gcd 12,8 (result: 4)</p>' +
-        '<p><strong>LCM:</strong> lcm(12,8) or lcm 12,8 (result: 24)</p>' +
-        '<p><strong>Modulo (function):</strong> mod(10,3) or mod 10,3 (result: 1)</p>' +
-        '<p><strong>Prime Check:</strong> prime?(7) (result: true)</p>' +
-
+        '<p>gcd(12,8), lcm(12,8), mod(10,3), prime?(7), factor(60)</p>' +
         '<h3>--- NUMBER SYSTEM CONVERSIONS ---</h3>' +
-        '<p>Use the Conversion branch buttons. Format: <strong>DEC → BINARY 255</strong></p>' +
-        '<p>Or type: DEC → BINARY 255, BIN → DECIMAL 1010, DEC → HEX 255, HEX → DECIMAL FF, DEC → OCT 64, OCT → DECIMAL 100, BIN → HEX 1111</p>' +
-
+        '<p>Format: <strong>DEC → BINARY 255</strong> (also HEX, OCT, BIN variants)</p>' +
         '<h3>--- SET THEORY ---</h3>' +
-        '<p><strong>Union:</strong> UNION</p>' +
-        '<p><strong>Intersection:</strong> ∩</p>' +
-        '<p><strong>Complement:</strong> COMPLEMENT</p>' +
-        '<p><strong>Difference:</strong> \\</p>' +
-        '<p><strong>Subset:</strong> SUBSET</p>' +
-        '<p><strong>Powerset:</strong> POWERSET</p>' +
-
-        '<h3>--- MATRIX ---</h3>' +
-        '<p><strong>Determinant 2x2:</strong> det2x2(a,b,c,d) — for matrix [a b; c d]</p>' +
-        '<p><strong>Example:</strong> det2x2(1,2,3,4) — det = 1*4 - 2*3 = -2</p>' +
-
+        '<p>UNION, ∩, COMPLEMENT, \\, SUBSET, POWERSET — symbolic explanations</p>' +
+        '<h3>--- MATRIX (2×2) ---</h3>' +
+        '<p>det2x2(1,2,3,4), add2x2(1,2,3,4,5,6,7,8), mul2x2(1,2,3,4,5,6,7,8)</p>' +
         '<h3>--- COMPLEX NUMBERS ---</h3>' +
-        '<p>This branch is a placeholder; use Universal for complex expressions.</p>' +
-
-        '<h3>--- IMPORTANT TIPS ---</h3>' +
-        '<p>Functions like √, sin, cos, etc. now work both with and without parentheses: √16, sin30, log100.</p>' +
-        '<p>Modulo (%) works perfectly between numbers; at the end of a number it acts as percentage (e.g., 200% = 2).</p>' +
-        '<p>If an expression fails in a specific branch, it automatically falls back to Universal mode with a warning message.</p>' +
+        '<p>re(3+4i), im(3+4i), conj(3+4i), abs(3+4i), arg(3+4i)</p>' +
+        '<h3>--- TIPS ---</h3>' +
+        '<p>Tap anywhere in the expression to move the cursor, or use ◀ ▶ to navigate precisely.</p>' +
+        '<p>If an expression fails in a specific branch, it automatically falls back to Universal mode.</p>' +
         '</div>';
     showFullPage('HELP / HOW TO USE', helpHtml);
 }
 
 function showPrivacyPage() {
-    var privacyHtml = '<div class="about-text" style="font-size:0.8rem;">' +
+    var privacyHtml = '<div class="about-text">' +
         '<h2>PRIVACY POLICY</h2>' +
-        '<p style="font-size:0.75rem; color:var(--text-secondary); margin-bottom:20px;">Last updated: May 2026</p>' +
+        '<p class="muted-small">Last updated: May 2026</p>' +
         '<h3>1. Introduction</h3>' +
-        '<p>This privacy policy applies to the <strong>Universal CS Calculator</strong> application developed by Hanz Dalmino. Your privacy is important, and this policy explains how your information is handled when you use the app.</p>' +
+        '<p>This privacy policy applies to the <strong>Universal CS Calculator</strong> application developed by Hanz Dalmino.</p>' +
         '<h3>2. Data Collection</h3>' +
-        '<p><strong>We do not collect any personal data.</strong> The Universal CS Calculator operates entirely on your device. All calculations, history, and preferences (such as theme and font settings) are stored locally using your device\'s internal storage (localStorage) and are never transmitted to any server or third party.</p>' +
+        '<p><strong>We do not collect any personal data.</strong> Calculations, history, and preferences are stored locally on your device and never transmitted anywhere.</p>' +
         '<h3>3. Information Stored Locally</h3>' +
-        '<ul>' +
-            '<li>Calculation history (stored only on your device)</li>' +
-            '<li>Theme preference (your chosen color theme)</li>' +
-            '<li>Font preference (your chosen font style)</li>' +
-        '</ul>' +
-        '<p>This information never leaves your device and can be cleared at any time using the "Clear Cache" button within the app or by clearing your browser data.</p>' +
+        '<ul><li>Calculation history</li><li>Theme preference</li><li>Font preference</li></ul>' +
+        '<p>Clear it anytime via "Clear Cache" in the app.</p>' +
         '<h3>4. Third-Party Services</h3>' +
-        '<p>This application does not use any third-party analytics, advertising, or tracking services. No data is shared with any external parties.</p>' +
+        '<p>No analytics, advertising, or tracking services are used.</p>' +
         '<h3>5. Internet Usage</h3>' +
-        '<p>The app works completely offline after the first visit. An internet connection is only required for the initial installation or when updating the app.</p>' +
+        '<p>The app works fully offline after the first visit.</p>' +
         '<h3>6. Children\'s Privacy</h3>' +
-        '<p>This application does not collect any personal information from anyone, including children under the age of 13.</p>' +
+        '<p>No personal information is collected from anyone, including children under 13.</p>' +
         '<h3>7. Changes to This Policy</h3>' +
-        '<p>Any changes to this privacy policy will be reflected on this page. Continued use of the app after changes constitutes acceptance of the updated policy.</p>' +
+        '<p>Updates will be reflected on this page.</p>' +
         '<h3>8. Contact</h3>' +
-        '<p>If you have any questions about this privacy policy, you can contact the developer through the GitHub repository or email.</p>' +
-        '<h3>9. Support</h3>' +
-        '<p>For help, questions, or feedback about the Universal CS Calculator, please visit the app page or contact the developer:</p>' +
-        '<p style="text-align:center; margin-top:10px;"><a href="https://hdalmino0011.github.io/Computer-Science-Calculator/" style="color:#7c3aed; font-weight:bold;">hdalmino0011.github.io/Computer-Science-Calculator</a></p>' +
-        '<p style="text-align:center; margin-top:5px;">Email: <a href="mailto:dalminohanz14@gmail.com" style="color:#7c3aed;">dalminohanz14@gmail.com</a></p>' +
+        '<p style="text-align:center; margin-top:10px;"><a href="https://hdalmino0011.github.io/Computer-Science-Calculator/" style="color:var(--accent); font-weight:bold;">hdalmino0011.github.io/Computer-Science-Calculator</a></p>' +
+        '<p style="text-align:center; margin-top:5px;">Email: <a href="mailto:dalminohanz14@gmail.com" style="color:var(--accent);">dalminohanz14@gmail.com</a></p>' +
         '</div>';
     showFullPage('PRIVACY & POLICY', privacyHtml);
 }
@@ -807,25 +808,19 @@ function showPrivacyPage() {
 function showAboutPage() {
     var aboutHtml = '<div class="about-text">' +
         '<h3>Developed by Hanz Dalmino</h3>' +
-        '<p>a Bachelor of Science in Information Technology student from Cebu Technological University - Main Campus</p>' +
+        '<p>A Bachelor of Science in Information Technology student from Cebu Technological University - Main Campus</p>' +
         '<h3>Purpose</h3>' +
-        '<p>This Universal CS Calculator is specifically designed for students and professionals in <strong>Computer Science, Information Technology, Computer Engineering, and related fields</strong>. It provides step-by-step evaluation for a wide range of mathematical concepts essential to these disciplines.</p>' +
+        '<p>This Universal CS Calculator is designed for students and professionals in <strong>Computer Science, Information Technology, Computer Engineering,</strong> and related fields, offering step-by-step evaluation across key disciplines.</p>' +
         '<h3>Topics Covered</h3>' +
         '<ul>' +
-            '<li>Arithmetic & Bitwise Operations</li>' +
-            '<li>Relational and Logical Operators</li>' +
-            '<li>Combinatorics (nCr, nPr, Factorials)</li>' +
-            '<li>Boolean Algebra and Logic Gates</li>' +
-            '<li>Set Theory (Union, Intersection, Complement, Subset)</li>' +
-            '<li>Number Theory (GCD, LCM, Modulo, Primality)</li>' +
-            '<li>Number System Conversions (Binary, Decimal, Hex, Octal)</li>' +
-            '<li>Matrix Algebra (Determinants, basic operations)</li>' +
-            '<li>Complex Numbers</li>' +
-            '<li>Scientific Functions (sin, cos, tan, log, ln, sqrt, abs)</li>' +
+        '<li>Arithmetic & Bitwise Operations</li><li>Relational and Logical Operators</li>' +
+        '<li>Combinatorics (nCr, nPr, Factorials)</li><li>Boolean Algebra and Logic Gates</li>' +
+        '<li>Set Theory</li><li>Number Theory (GCD, LCM, Modulo, Primality, Factoring)</li>' +
+        '<li>Number System Conversions</li><li>Matrix Algebra (2×2)</li>' +
+        '<li>Complex Numbers</li><li>Scientific Functions</li>' +
         '</ul>' +
         '<h3>Why This Calculator?</h3>' +
-        '<p>Unlike simple calculators, this tool shows every step of the evaluation, helping students understand the process behind the answer. It handles complex expressions mixing arithmetic, bitwise, relational, and logical operators in a single line.</p>' +
-        '<p>It is also fully customizable with 12 themes and multiple fonts, and it works on desktop, tablet, and mobile devices.</p>' +
+        '<p>It shows every step of the evaluation to help students understand the process, and handles mixed arithmetic, bitwise, relational, and logical expressions in one line — fully customizable with 12 themes and multiple fonts, on desktop, tablet, and mobile.</p>' +
         '</div>';
     showFullPage('ABOUT', aboutHtml);
 }
@@ -833,11 +828,12 @@ function showAboutPage() {
 function showThemesPage() {
     var html = '<div class="theme-grid">';
     for (var i = 0; i < themes.length; i++) {
-        html += '<div class="theme-card" data-theme="' + themes[i] + '" style="background:' + getThemeColor(themes[i]) + '; color:white;">' + themeNames[i] + '</div>';
+        html += '<div class="theme-card" data-theme="' + themes[i] + '" style="--swatch:' + getThemeColor(themes[i]) + '">' +
+                '<span class="theme-swatch"></span>' + themeNames[i] + '</div>';
     }
     html += '</div>';
     showFullPage('THEMES (12)', html);
-    
+
     var cards = document.querySelectorAll('.theme-card');
     for (var i = 0; i < cards.length; i++) {
         cards[i].addEventListener('click', function() {
@@ -848,14 +844,21 @@ function showThemesPage() {
 }
 
 function showFontPage() {
-    var fonts = ['Times New Roman', 'Arial', 'Courier New', 'Georgia', 'Verdana'];
+    var fonts = [
+        { label: 'Sans (Inter)', value: "'Inter', 'Segoe UI', system-ui, sans-serif" },
+        { label: 'Times New Roman', value: 'Times New Roman' },
+        { label: 'Arial', value: 'Arial' },
+        { label: 'Courier New (Mono)', value: 'Courier New' },
+        { label: 'Georgia', value: 'Georgia' },
+        { label: 'Verdana', value: 'Verdana' }
+    ];
     var html = '<div class="font-selector-page">';
     for (var i = 0; i < fonts.length; i++) {
-        html += '<div class="font-option" data-font="' + fonts[i] + '">' + fonts[i] + '</div>';
+        html += '<div class="font-option" data-font="' + fonts[i].value + '" style="font-family:' + fonts[i].value + '">' + fonts[i].label + '</div>';
     }
     html += '</div>';
     showFullPage('FONT', html);
-    
+
     var opts = document.querySelectorAll('.font-option');
     for (var i = 0; i < opts.length; i++) {
         opts[i].addEventListener('click', function() {
@@ -873,43 +876,60 @@ function showHistoryPage() {
     var html = '<div class="history-list-page">';
     for (var i = 0; i < historyEntries.length; i++) {
         var h = historyEntries[i];
-        html += '<div class="history-item-page">' +
-                    '<div class="history-expr" style="font-family:monospace; font-weight:bold;">' + escapeHtml(h.expr) + '</div>' +
-                    '<div class="history-result" style="color:var(--accent);">= ' + escapeHtml(h.result) + '</div>' +
-                    '<div class="history-meta" style="font-size:0.7rem; opacity:0.6;">' + h.branch + ' | ' + h.date + '</div>' +
-                 '</div>';
+        html += '<div class="history-item-page" data-index="' + i + '">' +
+                '<div class="history-expr">' + escapeHtml(h.expr) + '</div>' +
+                '<div class="history-result">= ' + escapeHtml(h.result) + '</div>' +
+                '<div class="history-meta">' + escapeHtml(branchNames[h.branch] || h.branch) + ' · ' + escapeHtml(h.date) + '</div>' +
+                '</div>';
     }
-    html += '</div><button id="clearHistoryFromPage" class="action-btn" style="margin-top:15px; background:#ef4444; border:none; padding:10px; border-radius:30px; color:white; cursor:pointer; width:100%;">CLEAR ALL HISTORY</button>';
+    html += '</div><button id="clearHistoryFromPage" class="action-btn danger-btn full-width-btn">CLEAR ALL HISTORY</button>';
     showFullPage('HISTORY', html);
-    
-    var clearBtn = document.getElementById('clearHistoryFromPage');
-    if (clearBtn) {
-        clearBtn.addEventListener('click', function() {
-            clearHistory();
-            showHistoryPage();
+
+    var items = document.querySelectorAll('.history-item-page[data-index]');
+    for (var i = 0; i < items.length; i++) {
+        items[i].addEventListener('click', function() {
+            var idx = parseInt(this.getAttribute('data-index'), 10);
+            var h = historyEntries[idx];
+            exprInput.value = h.expr;
+            var branchBtn = document.querySelector('.branch-drawer-btn[data-branch="' + h.branch + '"]');
+            if (branchBtn) branchBtn.click();
+            showCalculatorView();
+            exprInput.focus();
         });
     }
+    var clearBtn = document.getElementById('clearHistoryFromPage');
+    if (clearBtn) clearBtn.addEventListener('click', function() { clearHistory(); showHistoryPage(); });
 }
 
 function getThemeColor(t) {
-    var c = { 
-        default: '#7c3aed', 
-        obsidian: '#a855f7', 
-        royalblue: '#3b82f6', 
-        orange: '#f97316', 
-        highcontrast: '#ffff00', 
-        forest: '#22c55e', 
-        crimson: '#ef4444', 
-        slate: '#64748b', 
-        purple: '#c084fc', 
-        midnight: '#60a5fa', 
-        sand: '#fbbf24', 
-        'cyan-night': '#06b6d4' 
+    var c = {
+        default: '#7c3aed', obsidian: '#a855f7', royalblue: '#3b82f6', orange: '#f97316',
+        highcontrast: '#ffff00', forest: '#22c55e', crimson: '#ef4444', slate: '#64748b',
+        purple: '#c084fc', midnight: '#60a5fa', sand: '#fbbf24', 'cyan-night': '#06b6d4'
     };
     return c[t] || '#7c3aed';
 }
 
-// ========== INITIALIZATION ==========
+// ================= KEYBOARD SUPPORT =================
+var keyMap = {
+    '*': '×', '/': '÷'
+};
+
+function handlePhysicalKeydown(e) {
+    // don't hijack when a full page / steps view is open and target isn't the expr input
+    if (document.activeElement !== exprInput) return;
+
+    if (e.key === 'Enter') { e.preventDefault(); evaluate(); return; }
+    if (e.key === 'Escape') {
+        exprInput.value = '';
+        resultDisplay.textContent = '0';
+        if (fallbackMessage) fallbackMessage.style.display = 'none';
+        return;
+    }
+    // let native Backspace/Delete/ArrowLeft/ArrowRight behave natively in the input
+}
+
+// ================= INITIALIZATION =================
 function init() {
     loadHistory();
     initTheme();
@@ -921,9 +941,7 @@ function init() {
     for (var i = 0; i < branchBtns.length; i++) {
         branchBtns[i].addEventListener('click', function() {
             var allBtns = document.querySelectorAll('.branch-drawer-btn');
-            for (var j = 0; j < allBtns.length; j++) {
-                allBtns[j].classList.remove('active');
-            }
+            for (var j = 0; j < allBtns.length; j++) allBtns[j].classList.remove('active');
             this.classList.add('active');
             currentBranch = this.getAttribute('data-branch');
             updateBranchIndicator();
@@ -940,40 +958,41 @@ function init() {
     document.getElementById('drawerHistoryBtn').onclick = function() { toggleDrawer(false); showHistoryPage(); };
     document.getElementById('drawerAboutBtn').onclick = function() { toggleDrawer(false); showAboutPage(); };
     document.getElementById('drawerClearCacheBtn').onclick = function() { toggleDrawer(false); clearCache(); };
-    // Changed to use hardResetAndRefresh instead of resetSession
     document.getElementById('drawerExitBtn').onclick = function() { toggleDrawer(false); hardResetAndRefresh(); };
 
     document.getElementById('equalBtn').onclick = evaluate;
-    document.getElementById('clearBtn').onclick = function() { 
-        exprInput.value = ''; 
-        resultDisplay.textContent = '0'; 
-        if (fallbackMessage) fallbackMessage.style.display = 'none'; 
+    document.getElementById('clearBtn').onclick = function() {
+        buzz();
+        exprInput.value = '';
+        resultDisplay.textContent = '0';
+        if (fallbackMessage) fallbackMessage.style.display = 'none';
+        exprInput.focus();
     };
-    document.getElementById('spaceBtn').onclick = function() { exprInput.value += ' '; };
-    document.getElementById('backBtn').onclick = function() { exprInput.value = exprInput.value.slice(0, -1); };
+    document.getElementById('leftBtn').onclick = function() { buzz(); moveCaret(-1); };
+    document.getElementById('rightBtn').onclick = function() { buzz(); moveCaret(1); };
+    document.getElementById('backBtn').onclick = function() { buzz(); backspaceAtCaret(); };
+    document.getElementById('ansToggleBtn').onclick = function() { buzz(); insertAtCaret('ANS'); showToast('Inserted last answer'); };
+
     document.getElementById('menuToggleBtn').onclick = function() { toggleDrawer(true); };
     document.getElementById('closeDrawerBtn').onclick = function() { toggleDrawer(false); };
     document.getElementById('overlay').onclick = function() { toggleDrawer(false); };
     document.getElementById('closeFullPageBtn').onclick = function() { showCalculatorView(); };
     document.getElementById('backToCalculatorBtn').onclick = function() { showCalculatorView(); };
 
-    // Update modal buttons
     if (updateNotNowBtn) updateNotNowBtn.onclick = function() { hideUpdateModal(); };
     if (updateNowBtn) updateNowBtn.onclick = function() { doUpdateNow(); };
 
-    exprInput.addEventListener('keypress', function(e) { 
-        if (e.key === 'Enter') evaluate(); 
-    });
+    exprInput.addEventListener('keydown', handlePhysicalKeydown);
 
     var activeBtns = document.querySelectorAll('.branch-drawer-btn');
     for (var i = 0; i < activeBtns.length; i++) {
-        if (activeBtns[i].getAttribute('data-branch') === currentBranch) {
-            activeBtns[i].classList.add('active');
-        }
+        if (activeBtns[i].getAttribute('data-branch') === currentBranch) activeBtns[i].classList.add('active');
     }
 
-    // Setup service worker update detection after page loads
     setupServiceWorkerUpdates();
+
+    // real keyboard should appear on mobile even though inputmode=none blocks autofocus zoom quirks
+    exprInput.addEventListener('focus', function() { exprInput.removeAttribute('inputmode'); });
 }
 
 init();
