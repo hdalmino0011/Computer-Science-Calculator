@@ -193,13 +193,14 @@ var universalButtons = [
 ];
 
 var arithmeticButtons = [
-    '(', ')', '7', '8', '9', '÷',
-    '4', '5', '6', '×',
-    '1', '2', '3', '-',
-    '0', '.', '%', '+',
-    '^', '√', '!', 'abs',
-    '&', '|', '~', '<<',
-    '>>', '≥', '≤', '≠'
+    '(', ')', '%', '÷',
+    '7', '8', '9', '×',
+    '4', '5', '6', '-',
+    '1', '2', '3', '+',
+    '0', '.', '^', '√',
+    '!', 'abs', '&', '|',
+    '~', '<<', '>>', 'XOR',
+    '≥', '≤', '≠', '=='
 ];
 
 var combinatoricsButtons = [
@@ -242,7 +243,11 @@ var conversionButtons = [
     'DEC → BINARY', 'BIN → DECIMAL',
     'DEC → HEX', 'HEX → DECIMAL',
     'DEC → OCT', 'OCT → DECIMAL',
-    'BIN → HEX', 'CLEAR'
+    'BIN → HEX', 'CLEAR',
+    '7', '8', '9', 'A',
+    '4', '5', '6', 'B',
+    '1', '2', '3', 'C',
+    '0', 'D', 'E', 'F'
 ];
 
 var matrixButtons = [
