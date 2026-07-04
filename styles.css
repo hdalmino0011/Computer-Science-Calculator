@@ -120,6 +120,7 @@ body.theme-cyan-night  { --bg-card: #071c26; --accent: #06b6d4; --accent-2: #67e
     display: flex;
     flex-direction: column;
     flex: 1;
+    min-height: 0;
     overflow-y: auto;
     overflow-x: hidden;
 }
@@ -193,8 +194,8 @@ body.theme-cyan-night  { --bg-card: #071c26; --accent: #06b6d4; --accent-2: #67e
     display: flex;
     flex-direction: column;
     flex: 1;
+    min-height: 0;
     gap: 8px;
-    justify-content: flex-end;
 }
 
 .button-grid {
@@ -202,7 +203,8 @@ body.theme-cyan-night  { --bg-card: #071c26; --accent: #06b6d4; --accent-2: #67e
     grid-template-columns: repeat(4, 1fr);
     gap: 7px;
     overflow-y: auto;
-    max-height: 46vh;
+    flex: 1;
+    min-height: 0;
     align-content: start;
     padding: 2px;
 }
@@ -598,7 +600,7 @@ body.theme-cyan-night  { --bg-card: #071c26; --accent: #06b6d4; --accent-2: #67e
 
 @media (max-width: 768px) {
     .app-container { min-height: 100vh; max-height: none; }
-    .button-grid { gap: 6px; max-height: 42vh; }
+    .button-grid { gap: 6px; }
     .calc-btn { font-size: 0.78rem; padding: 8px 2px; min-height: 42px; }
     .action-buttons { gap: 6px; }
     .action-btn { min-height: 46px; font-size: 0.85rem; padding: 10px 4px; }
@@ -616,7 +618,7 @@ body.theme-cyan-night  { --bg-card: #071c26; --accent: #06b6d4; --accent-2: #67e
     #exprInput { padding: 8px 12px; font-size: 0.95rem; }
     .result-box { padding: 6px 12px; font-size: 1.1rem; }
     .buttons-panel { padding: 6px 10px 10px; gap: 6px; }
-    .button-grid { gap: 4px; max-height: 32vh; }
+    .button-grid { gap: 4px; }
     .calc-btn { min-height: 32px; font-size: 0.68rem; padding: 4px 2px; }
     .action-btn { min-height: 38px; font-size: 0.78rem; padding: 6px 4px; }
     .app-footer { padding: 3px 8px; }
