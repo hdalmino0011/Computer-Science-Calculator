@@ -118,11 +118,17 @@
 
 <script>
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js')
-      .then(function(reg) {
-        setInterval(function() { reg.update(); }, 60 * 60 * 1000);
-      })
-      .catch(function(err) { console.error('Service Worker failed', err); });
+    window.addEventListener('load', function() {
+      navigator.serviceWorker.register('sw.js')
+        .then(function(reg) {
+          console.log('Service Worker registered successfully');
+          // Check for updates every hour
+          setInterval(function() { reg.update(); }, 60 * 60 * 1000);
+        })
+        .catch(function(err) { 
+          console.error('Service Worker registration failed:', err); 
+        });
+    });
   }
 </script>
 <script src="script.js"></script>
