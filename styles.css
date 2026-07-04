@@ -294,14 +294,48 @@ body.theme-cyan-night  { --bg-card: #071c26; --accent: #06b6d4; --accent-2: #67e
 .full-width-btn { width: 100%; margin-top: 15px; }
 
 .app-footer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
     text-align: center;
-    font-size: 0.62rem;
-    color: var(--text-secondary);
-    opacity: 0.55;
-    padding: 10px 10px 18px;
+    padding: 8px 10px;
     margin-top: auto;
-    letter-spacing: 0.5px;
     flex-shrink: 0;
+    position: relative;
+}
+
+.app-footer::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 28px;
+    height: 2px;
+    border-radius: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    opacity: 0.6;
+}
+
+.footer-mark {
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    color: var(--bg-card);
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    padding: 2px 6px;
+    border-radius: 5px;
+    line-height: 1.4;
+}
+
+.footer-text {
+    font-size: 0.6rem;
+    font-weight: 500;
+    letter-spacing: 0.4px;
+    color: var(--text-secondary);
+    opacity: 0.65;
 }
 
 .full-page-view, .steps-view {
@@ -563,7 +597,7 @@ body.theme-cyan-night  { --bg-card: #071c26; --accent: #06b6d4; --accent-2: #67e
 @supports (padding-bottom: env(safe-area-inset-bottom)) {
     @media (max-width: 768px) {
         .buttons-panel { padding-bottom: calc(14px + env(safe-area-inset-bottom)); }
-        .app-footer { padding-bottom: calc(20px + env(safe-area-inset-bottom)); }
+        .app-footer { padding-bottom: calc(8px + env(safe-area-inset-bottom)); }
     }
 }
 
@@ -580,7 +614,9 @@ body.theme-cyan-night  { --bg-card: #071c26; --accent: #06b6d4; --accent-2: #67e
     .drawer { width: 85%; left: -85%; }
     .title { font-size: 0.68rem; }
     .display-area { padding: 12px; }
-    .app-footer { font-size: 0.58rem; padding: 8px 10px 14px; }
+    .app-footer { padding: 6px 10px; }
+    .footer-mark { font-size: 0.55rem; }
+    .footer-text { font-size: 0.56rem; }
 }
 
 @media (max-height: 560px) {
@@ -593,7 +629,9 @@ body.theme-cyan-night  { --bg-card: #071c26; --accent: #06b6d4; --accent-2: #67e
     .button-grid { gap: 4px; max-height: 32vh; }
     .calc-btn { min-height: 32px; font-size: 0.68rem; padding: 4px 2px; }
     .action-btn { min-height: 38px; font-size: 0.78rem; padding: 6px 4px; }
-    .app-footer { font-size: 0.55rem; padding: 6px 8px 10px; }
+    .app-footer { padding: 4px 8px; }
+    .footer-mark { font-size: 0.5rem; padding: 1px 5px; }
+    .footer-text { font-size: 0.52rem; }
 }
 
 /* Focus visibility for accessibility */
