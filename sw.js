@@ -1,4 +1,4 @@
-const CACHE_NAME = 'cs-calc-v1';
+const CACHE_NAME = 'cs-calc-v2';
 const ASSETS = [
   'index.html',
   'styles.css',
