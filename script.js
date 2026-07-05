@@ -220,9 +220,19 @@ function hidePwaWelcomeModal() {
     if (modal) modal.style.display = 'none';
 }
 
-function handlePwaWelcomeResponse() {
+function handlePwaWelcomeAgree() {
+    // Mark as seen so it doesn't show again
     localStorage.setItem('pwaWelcomeSeen', 'true');
     hidePwaWelcomeModal();
+    // Perform hard reset session
+    hardResetAndRefresh();
+}
+
+function handlePwaWelcomeDisagree() {
+    // Mark as seen so it doesn't show again
+    localStorage.setItem('pwaWelcomeSeen', 'true');
+    hidePwaWelcomeModal();
+    // Continue to app without reset
 }
 
 function initPwaWelcomeModal() {
@@ -231,8 +241,8 @@ function initPwaWelcomeModal() {
         showPwaWelcomeModal();
     }
     // Attach event listeners
-    document.getElementById('pwaAgreeBtn').addEventListener('click', handlePwaWelcomeResponse);
-    document.getElementById('pwaDisagreeBtn').addEventListener('click', handlePwaWelcomeResponse);
+    document.getElementById('pwaAgreeBtn').addEventListener('click', handlePwaWelcomeAgree);
+    document.getElementById('pwaDisagreeBtn').addEventListener('click', handlePwaWelcomeDisagree);
 }
 
 // ================= BUTTON DEFINITIONS =================
