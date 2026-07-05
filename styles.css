@@ -97,6 +97,13 @@ body.theme-cyan-night  { --bg-card: #071c26; --accent: #06b6d4; --accent-2: #67e
 .menu-btn:hover { background: var(--accent); border-color: var(--accent); }
 .menu-btn:active { transform: scale(0.94); }
 
+/* Keyboard toggle active state (keyboard enabled) */
+#keyboardToggleBtn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+}
+
 #ansToggleBtn { font-family: var(--font-mono); font-size: 0.7rem; font-weight: 700; letter-spacing: 0.5px; }
 
 .title-wrap {
@@ -553,7 +560,7 @@ body.theme-cyan-night  { --bg-card: #071c26; --accent: #06b6d4; --accent-2: #67e
 }
 .back-btn:hover { background: var(--accent); border-color: var(--accent); }
 
-/* Update Modal */
+/* Update Modal (shared with PWA welcome modal) */
 .update-modal {
     position: fixed; top: 0; left: 0; right: 0; bottom: 0;
     z-index: 2000; display: flex; align-items: center; justify-content: center;
@@ -574,6 +581,15 @@ body.theme-cyan-night  { --bg-card: #071c26; --accent: #06b6d4; --accent-2: #67e
 .update-modal-message { font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 20px; line-height: 1.5; }
 .update-modal-buttons { display: flex; gap: 10px; }
 .update-modal-buttons .action-btn { flex: 1; }
+
+/* PWA Welcome Modal specific message styling */
+#pwaWelcomeMessage p {
+    margin-bottom: 8px;
+    line-height: 1.6;
+}
+#pwaWelcomeMessage strong {
+    color: var(--accent-2);
+}
 
 /* Toast */
 .toast {
