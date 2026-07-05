@@ -2,6 +2,7 @@
 var currentBranch = "universal";
 var historyEntries = [];
 var lastAnswer = 0;
+var keyboardEnabled = false; // Default: keyboard OFF
 
 // DOM Elements
 var exprInput = document.getElementById('exprInput');
@@ -176,6 +177,62 @@ function initFont() {
 function setFont(font) {
     document.body.style.fontFamily = font;
     localStorage.setItem('appFont', font);
+}
+
+// ================= KEYBOARD TOGGLE =================
+function applyKeyboardState() {
+    if (keyboardEnabled) {
+        exprInput.removeAttribute('readonly');
+        exprInput.inputMode = 'text';
+        document.getElementById('keyboardToggleBtn').classList.add('active');
+    } else {
+        exprInput.setAttribute('readonly', 'readonly');
+        exprInput.inputMode = 'none';
+        document.getElementById('keyboardToggleBtn').classList.remove('active');
+        // If input is focused, blur it to hide keyboard
+        if (document.activeElement === exprInput) {
+            exprInput.blur();
+        }
+    }
+}
+
+function toggleKeyboard() {
+    keyboardEnabled = !keyboardEnabled;
+    localStorage.setItem('keyboardEnabled', keyboardEnabled ? 'true' : 'false');
+    applyKeyboardState();
+    showToast(keyboardEnabled ? 'Keyboard enabled' : 'Keyboard disabled');
+}
+
+function initKeyboardState() {
+    var saved = localStorage.getItem('keyboardEnabled');
+    keyboardEnabled = (saved === 'true');
+    applyKeyboardState();
+}
+
+// ================= PWA WELCOME MODAL =================
+function showPwaWelcomeModal() {
+    var modal = document.getElementById('pwaWelcomeModal');
+    if (modal) modal.style.display = 'flex';
+}
+
+function hidePwaWelcomeModal() {
+    var modal = document.getElementById('pwaWelcomeModal');
+    if (modal) modal.style.display = 'none';
+}
+
+function handlePwaWelcomeResponse() {
+    localStorage.setItem('pwaWelcomeSeen', 'true');
+    hidePwaWelcomeModal();
+}
+
+function initPwaWelcomeModal() {
+    var seen = localStorage.getItem('pwaWelcomeSeen');
+    if (!seen) {
+        showPwaWelcomeModal();
+    }
+    // Attach event listeners
+    document.getElementById('pwaAgreeBtn').addEventListener('click', handlePwaWelcomeResponse);
+    document.getElementById('pwaDisagreeBtn').addEventListener('click', handlePwaWelcomeResponse);
 }
 
 // ================= BUTTON DEFINITIONS =================
@@ -687,6 +744,10 @@ function clearCache() {
         saveHistory();
         initTheme();
         initFont();
+        // Reset keyboard state to default (OFF)
+        keyboardEnabled = false;
+        localStorage.setItem('keyboardEnabled', 'false');
+        applyKeyboardState();
         exprInput.value = '';
         resultDisplay.textContent = '0';
         fallbackMessage.style.display = 'none';
@@ -939,9 +1000,11 @@ function init() {
     loadHistory();
     initTheme();
     initFont();
+    initKeyboardState();
     updateBranchIndicator();
     renderButtons();
 
+    // Set up branch buttons
     var branchBtns = document.querySelectorAll('.branch-drawer-btn');
     for (var i = 0; i < branchBtns.length; i++) {
         branchBtns[i].addEventListener('click', function() {
@@ -956,6 +1019,7 @@ function init() {
         });
     }
 
+    // Drawer actions
     document.getElementById('drawerHelpBtn').onclick = function() { toggleDrawer(false); showHelpPage(); };
     document.getElementById('drawerPrivacyBtn').onclick = function() { toggleDrawer(false); showPrivacyPage(); };
     document.getElementById('drawerThemesBtn').onclick = function() { toggleDrawer(false); showThemesPage(); };
@@ -965,6 +1029,7 @@ function init() {
     document.getElementById('drawerClearCacheBtn').onclick = function() { toggleDrawer(false); clearCache(); };
     document.getElementById('drawerExitBtn').onclick = function() { toggleDrawer(false); hardResetAndRefresh(); };
 
+    // Calculator buttons
     document.getElementById('equalBtn').onclick = evaluate;
     document.getElementById('clearBtn').onclick = function() {
         buzz();
@@ -978,17 +1043,30 @@ function init() {
     document.getElementById('backBtn').onclick = function() { buzz(); backspaceAtCaret(); };
     document.getElementById('ansToggleBtn').onclick = function() { buzz(); insertAtCaret('ANS'); showToast('Inserted last answer'); };
 
+    // Menu and overlay
     document.getElementById('menuToggleBtn').onclick = function() { toggleDrawer(true); };
     document.getElementById('closeDrawerBtn').onclick = function() { toggleDrawer(false); };
     document.getElementById('overlay').onclick = function() { toggleDrawer(false); };
     document.getElementById('closeFullPageBtn').onclick = function() { showCalculatorView(); };
     document.getElementById('backToCalculatorBtn').onclick = function() { showCalculatorView(); };
 
+    // Keyboard toggle
+    document.getElementById('keyboardToggleBtn').onclick = function() {
+        buzz();
+        toggleKeyboard();
+    };
+
+    // Update modal
     if (updateNotNowBtn) updateNotNowBtn.onclick = function() { hideUpdateModal(); };
     if (updateNowBtn) updateNowBtn.onclick = function() { doUpdateNow(); };
 
+    // PWA welcome modal
+    initPwaWelcomeModal();
+
+    // Input event
     exprInput.addEventListener('keydown', handlePhysicalKeydown);
 
+    // Highlight active branch
     var activeBtns = document.querySelectorAll('.branch-drawer-btn');
     for (var i = 0; i < activeBtns.length; i++) {
         if (activeBtns[i].getAttribute('data-branch') === currentBranch) activeBtns[i].classList.add('active');
