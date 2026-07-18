@@ -625,63 +625,156 @@ body.theme-cyan-night  { --bg-card: #071c26; --accent: #06b6d4; --accent-2: #67e
 }
 
 /* ============================================================
-   DESKTOP / WINDOWS PWA — fixed calculator "card" frame
-   Instead of stretching to fill the whole resizable window
-   (which caused the squeezed look), the app now sits as a
-   fixed-size card centered in the window, like a real
-   calculator app, with a subtle border + shadow separating
-   it from the desktop background behind it.
+   DESKTOP / WINDOWS APP LAYOUT
+   Instead of floating a small phone-shaped card in the middle
+   of the screen, the app now behaves like an actual desktop
+   app: it fills the whole window, and the mode-switcher drawer
+   becomes a permanent left sidebar (like a real app's nav rail)
+   instead of a hamburger overlay. The calculator itself sits in
+   a centered column inside that main area so buttons don't
+   stretch into giant awkward shapes on wide windows.
+
+   NOTE ON WINDOW RESIZING: a PWA's window chrome (resizing,
+   min/max/close) is controlled entirely by Windows/the browser
+   shell — there is no CSS or JS API that can lock or disable
+   resizing for an installed PWA. That would require packaging
+   the app natively (e.g. Electron/Tauri) instead of installing
+   it as a PWA. What this stylesheet *can* do is make sure the
+   layout still looks correct and intentional at any window size.
    ============================================================ */
-@media (min-width: 769px) {
-    body { padding: 24px; }
+@media (min-width: 900px) {
+    html, body { height: 100%; overflow: hidden; }
+
+    body {
+        display: flex;
+        flex-direction: row;
+        align-items: stretch;
+        justify-content: flex-start;
+        padding: 0;
+    }
+
+    /* Sidebar: the old mobile "drawer" becomes a permanent nav rail */
+    .drawer {
+        position: static;
+        order: -1;
+        left: auto;
+        width: 260px;
+        min-width: 260px;
+        height: 100%;
+        flex-shrink: 0;
+        transition: none;
+        border-right: 1px solid var(--border);
+        box-shadow: none;
+    }
+
+    /* No overlay/close button needed — sidebar is always visible */
+    .overlay { display: none !important; }
+    .close-drawer { display: none; }
+
+    /* Hamburger no longer needed since the sidebar is permanent */
+    #menuToggleBtn { display: none; }
 
     .app-container {
-        width: 420px;
-        height: 800px;
-        max-height: calc(100vh - 48px);
+        flex: 1;
+        width: auto;
+        height: 100%;
+        max-height: none;
         min-height: 0;
-        flex: none;
-        border-radius: 28px;
-        overflow: hidden;
-        box-shadow: 0 24px 70px rgba(0,0,0,0.55), 0 0 0 1px var(--border);
+        border-radius: 0;
+        box-shadow: none;
+        background: var(--bg-body);
+        overflow-y: auto;
+        align-items: center;
+    }
+
+    /* The actual calculator "surface" is capped and centered inside
+       the main area instead of stretching edge-to-edge on wide
+       windows — this is what keeps big monitors from looking like
+       a giant blown-up phone screen */
+    .top-bar,
+    .calculator-view {
+        width: 100%;
+        max-width: 520px;
+        margin: 0 auto;
+    }
+
+    .top-bar {
+        margin-top: 0;
+        border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+        background: linear-gradient(180deg, rgba(0,0,0,0.35), rgba(0,0,0,0.15)), var(--bg-card);
+    }
+
+    .calculator-view {
+        background: var(--bg-card);
+        border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+        box-shadow: 0 20px 50px rgba(0,0,0,0.45);
+        margin-bottom: 32px;
+    }
+
+    .full-page-view,
+    .steps-view {
+        max-width: 640px;
+        margin: 0 auto;
+        left: 0; right: 0;
     }
 
     .button-grid {
         grid-template-columns: repeat(4, 1fr);
-        gap: 8px;
+        gap: 10px;
     }
 
     .calc-btn {
-        font-size: 0.88rem;
-        min-height: 50px;
+        font-size: 0.92rem;
+        min-height: 54px;
         padding: 12px 6px;
     }
 
     .action-btn {
-        min-height: 54px;
+        min-height: 56px;
         font-size: 1rem;
     }
 
     #exprInput {
-        font-size: 1.25rem;
+        font-size: 1.3rem;
         padding: 18px 18px;
     }
 
     .result-box {
-        font-size: 1.7rem;
-        padding: 14px 18px;
+        font-size: 1.8rem;
+        padding: 16px 18px;
     }
 
     .steps-header,
     .full-page-header {
         padding: 14px 18px;
     }
+
+    /* Sidebar contents get a little breathing room as a real nav rail */
+    .drawer-section-title { font-size: 0.72rem; }
+    .branch-drawer-btn, .drawer-action-btn { font-size: 0.74rem; padding: 10px; }
 }
 
-/* If the desktop/PWA window itself gets narrow, drop the fixed
-   card width so nothing gets clipped or squeezed */
-@media (min-width: 769px) and (max-width: 460px) {
-    .app-container { width: 100%; }
+/* Between 769–899px: not quite wide enough for a permanent sidebar,
+   so keep the drawer as an overlay but stop the layout from looking
+   like a stretched phone by capping and centering the main column */
+@media (min-width: 769px) and (max-width: 899px) {
+    body { padding: 0; }
+    .app-container {
+        width: 100%;
+        height: 100vh;
+        max-height: none;
+        min-height: 0;
+        border-radius: 0;
+        box-shadow: none;
+    }
+    .top-bar, .calculator-view {
+        max-width: 480px;
+        margin: 0 auto;
+        width: 100%;
+    }
+    .button-grid { grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .calc-btn { font-size: 0.88rem; min-height: 50px; }
+    .action-btn { min-height: 54px; font-size: 1rem; }
 }
 
 @media (max-width: 768px) {
