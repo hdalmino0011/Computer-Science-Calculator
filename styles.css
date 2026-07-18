@@ -42,10 +42,6 @@ body {
     padding: 0;
     overflow-y: auto;
     overflow-x: hidden;
-    /* Center the app card when there's extra window space (desktop/PWA) */
-    display: flex;
-    align-items: center;
-    justify-content: center;
 }
 
 body.theme-default     { --bg-card: #14141f; --accent: #7c3aed; --accent-2: #22d3ee; --num-btn-bg: #2a2145; --num-btn-hover: #38295e; }
