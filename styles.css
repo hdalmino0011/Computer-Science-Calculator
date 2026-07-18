@@ -30,7 +30,7 @@
     --radius-sm: 10px;
 }
 
-html { background: var(--bg-body); }
+html { background: var(--bg-body); height: 100%; }
 
 body {
     font-family: var(--font-ui);
@@ -42,6 +42,10 @@ body {
     padding: 0;
     overflow-y: auto;
     overflow-x: hidden;
+    /* Center the app card when there's extra window space (desktop/PWA) */
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 body.theme-default     { --bg-card: #14141f; --accent: #7c3aed; --accent-2: #22d3ee; --num-btn-bg: #2a2145; --num-btn-hover: #38295e; }
@@ -620,12 +624,26 @@ body.theme-cyan-night  { --bg-card: #071c26; --accent: #06b6d4; --accent-2: #67e
     }
 }
 
+/* ============================================================
+   DESKTOP / WINDOWS PWA — fixed calculator "card" frame
+   Instead of stretching to fill the whole resizable window
+   (which caused the squeezed look), the app now sits as a
+   fixed-size card centered in the window, like a real
+   calculator app, with a subtle border + shadow separating
+   it from the desktop background behind it.
+   ============================================================ */
 @media (min-width: 769px) {
+    body { padding: 24px; }
+
     .app-container {
-        max-width: 520px;
-        margin: 0 auto;
-        min-height: 100vh;
-        box-shadow: 0 0 60px rgba(0,0,0,0.5);
+        width: 420px;
+        height: 800px;
+        max-height: calc(100vh - 48px);
+        min-height: 0;
+        flex: none;
+        border-radius: 28px;
+        overflow: hidden;
+        box-shadow: 0 24px 70px rgba(0,0,0,0.55), 0 0 0 1px var(--border);
     }
 
     .button-grid {
@@ -660,8 +678,15 @@ body.theme-cyan-night  { --bg-card: #071c26; --accent: #06b6d4; --accent-2: #67e
     }
 }
 
+/* If the desktop/PWA window itself gets narrow, drop the fixed
+   card width so nothing gets clipped or squeezed */
+@media (min-width: 769px) and (max-width: 460px) {
+    .app-container { width: 100%; }
+}
+
 @media (max-width: 768px) {
-    .app-container { min-height: 100vh; max-height: none; }
+    body { padding: 0; }
+    .app-container { min-height: 100vh; max-height: none; width: 100%; }
     .button-grid { gap: 6px; }
     .calc-btn { font-size: 0.78rem; padding: 8px 2px; min-height: 42px; }
     .action-buttons { gap: 6px; }
