@@ -92,6 +92,78 @@ function gcd(a, b) {
     return a;
 }
 
+// GCD via the Euclidean algorithm, with each division step recorded
+// so it can be shown to the user instead of just the final number.
+function gcdWithSteps(a, b) {
+    var steps = [];
+    var x = Math.abs(a), y = Math.abs(b);
+    steps.push('Using the Euclidean algorithm on gcd(' + x + ', ' + y + '):');
+    if (y === 0) {
+        steps.push('gcd(' + x + ', 0) = ' + x);
+        return { result: x, steps: steps };
+    }
+    while (y) {
+        var q = Math.floor(x / y);
+        var r = x % y;
+        steps.push(x + ' = ' + q + ' × ' + y + ' + ' + r);
+        x = y; y = r;
+    }
+    steps.push('The last non-zero remainder is the GCD: ' + x);
+    return { result: x, steps: steps };
+}
+
+// Converts a decimal integer to another base (2/8/16) via the
+// classic repeated-division-and-remainder method, step by step.
+function toBaseWithSteps(num, base) {
+    var steps = [];
+    var negative = num < 0;
+    var n = Math.trunc(Math.abs(num));
+    if (n === 0) {
+        steps.push('0 ÷ ' + base + ' = 0  remainder 0');
+        steps.push('Result: 0');
+        return { result: '0', steps: steps };
+    }
+    var digits = [];
+    while (n > 0) {
+        var q = Math.floor(n / base);
+        var r = n % base;
+        var digitChar = r.toString(base).toUpperCase();
+        steps.push(n + ' ÷ ' + base + ' = ' + q + '  remainder ' + digitChar);
+        digits.unshift(digitChar);
+        n = q;
+    }
+    var resultStr = (negative ? '-' : '') + digits.join('');
+    steps.push('Reading the remainders from bottom to top: ' + digits.join(''));
+    if (negative) steps.push('Applying the original negative sign: ' + resultStr);
+    return { result: resultStr, steps: steps };
+}
+
+// Converts a number written in another base back to decimal by
+// expanding each digit × base^position, step by step.
+function fromBaseWithSteps(str, base) {
+    var steps = [];
+    var clean = str.toUpperCase().trim();
+    var negative = clean.charAt(0) === '-';
+    if (negative) clean = clean.substring(1);
+    clean = clean.replace(/^0+(?=.)/, '');
+    var chars = clean.split('');
+    var n = chars.length;
+    var total = 0;
+    var parts = [];
+    for (var i = 0; i < n; i++) {
+        var digit = parseInt(chars[i], base);
+        if (isNaN(digit)) { steps.push('Invalid digit "' + chars[i] + '" for base ' + base); return { result: NaN, steps: steps }; }
+        var power = n - 1 - i;
+        var val = digit * Math.pow(base, power);
+        parts.push(chars[i] + ' × ' + base + '^' + power + ' = ' + val);
+        total += val;
+    }
+    steps.push(parts.join('\n'));
+    steps.push('Sum of all place values = ' + total);
+    if (negative) { total = -total; steps.push('Applying the original negative sign: ' + total); }
+    return { result: total, steps: steps };
+}
+
 // ================= VIEW SWITCHING =================
 function showCalculatorView() {
     calculatorView.style.display = 'flex';
@@ -103,15 +175,17 @@ function showStepsView(expression, result, steps) {
     document.getElementById('stepsExpression').innerHTML = '<strong>Expression:</strong> ' + escapeHtml(expression);
     document.getElementById('stepsResultFull').innerHTML = '<span class="result-label">RESULT:</span> <span class="result-value">' + escapeHtml(result) + '</span>';
     var stepsList = document.getElementById('stepsListFull');
-    if (!steps || steps === 'No steps') {
+    if (!steps || !steps.trim()) {
         stepsList.innerHTML = '<div class="step-item">No detailed steps available</div>';
     } else {
         var stepLines = steps.split('\n');
         var html = '';
+        var num = 0;
         for (var i = 0; i < stepLines.length; i++) {
             var line = stepLines[i];
             if (line.trim()) {
-                html += '<div class="step-item"><span class="step-number">' + (i + 1) + '.</span> ' + escapeHtml(line) + '</div>';
+                num++;
+                html += '<div class="step-item"><span class="step-number">' + num + '.</span> ' + escapeHtml(line) + '</div>';
             }
         }
         stepsList.innerHTML = html;
@@ -144,7 +218,7 @@ function saveHistory() {
 
 function addHistory(expr, result, steps, branch) {
     historyEntries.unshift({
-        expr: expr, result: result, steps: (steps || '').substring(0, 300),
+        expr: expr, result: result, steps: (steps || '').substring(0, 500),
         branch: branch, date: new Date().toLocaleString()
     });
     if (historyEntries.length > 50) historyEntries.length = 50;
@@ -339,7 +413,7 @@ function getFullButtons(branch) {
     }
 }
 
-function isNumberButton(label) { return /^[0-9.]$/.test(label); }
+function isNumberButton(label) { return /^[0-9A-F.]$/.test(label); }
 function isEqualsButton(label) { return label === '=='; }
 
 // ================= CARET-AWARE INPUT =================
@@ -492,28 +566,49 @@ function runCompiled(processed) {
     return fn(fact, xorFn, impliesFn, equivFn);
 }
 
+// Generates a genuine, visible step-by-step breakdown of how the
+// expression is evaluated: it repeatedly finds the innermost
+// parenthesized group (or function call) still remaining, computes
+// it, substitutes the result back into the expression, and records
+// that as one readable step — the same way a person would work
+// through the expression by hand, innermost-first.
 function generateSteps(expr) {
     var steps = [];
+    steps.push('Original expression: ' + expr);
+
     var clean = preprocessExpression(expr);
-    steps.push('Original: ' + expr);
-    steps.push('After symbol mapping: ' + clean);
+    if (clean !== expr) steps.push('After symbol/constant substitution: ' + clean);
 
     var processed = compileToJS(expr);
-    steps.push('Converted to JS: ' + processed);
+    if (processed !== clean) steps.push('Compiled form: ' + processed);
 
-    var parenRegex = /\(([^()]+)\)/g;
-    var match, subExprs = [];
-    while ((match = parenRegex.exec(processed)) !== null) subExprs.push(match[1]);
+    var reductionStart = steps.length;
+    var working = processed;
+    var guard = 0;
+    // Matches an optional function/identifier name immediately followed
+    // by a parenthesized group containing no further parentheses —
+    // i.e. always the innermost group left in the expression.
+    var callRegex = /([A-Za-z_][A-Za-z0-9_.]*)?\(([^()]*)\)/;
 
-    if (subExprs.length > 0) {
-        steps.push('Found ' + subExprs.length + ' sub-expression(s) in parentheses:');
-        for (var i = 0; i < subExprs.length; i++) {
-            var sub = subExprs[i];
-            try {
-                var val = runCompiled(sub);
-                steps.push('  (' + sub + ') = ' + val);
-            } catch (e) { steps.push('  (' + sub + ') = [sub-expression]'); }
+    while (callRegex.test(working) && guard < 40) {
+        guard++;
+        var m = callRegex.exec(working);
+        var fnName = m[1] || '';
+        var inner = m[2];
+        var exprToRun = fnName + '(' + (inner === '' ? '0' : inner) + ')';
+        var value;
+        try {
+            value = runCompiled(exprToRun);
+        } catch (e) {
+            break;
         }
+        var displayBefore = fnName ? (fnName + '(' + inner + ')') : ('(' + inner + ')');
+        working = working.slice(0, m.index) + value + working.slice(m.index + m[0].length);
+        steps.push('Evaluate ' + displayBefore + ' = ' + value + '   →   ' + working);
+    }
+
+    if (steps.length === reductionStart) {
+        steps.push('No parentheses or function calls to reduce — evaluating directly using standard order of operations (^, then × ÷, then + −, left to right).');
     }
 
     try {
@@ -547,92 +642,195 @@ function evaluateCombinatorics(expr) {
     var m = u.match(/NCR\s*\(?\s*(\d+)\s*,\s*(\d+)/i);
     if (m) {
         var n = parseInt(m[1]), r = parseInt(m[2]);
-        var res = fact(n) / (fact(r) * fact(n - r));
-        return { result: res, steps: 'C(' + n + ',' + r + ') = ' + n + '!/(' + r + '!(' + (n - r) + ')!) = ' + res };
+        var fn = fact(n), fr = fact(r), fnr = fact(n - r);
+        var res = fn / (fr * fnr);
+        var steps = [
+            'Combination formula: C(n, r) = n! / (r! × (n − r)!)',
+            'n = ' + n + ', r = ' + r,
+            n + '! = ' + fn,
+            r + '! = ' + fr,
+            '(' + n + ' − ' + r + ')! = ' + (n - r) + '! = ' + fnr,
+            'C(' + n + ',' + r + ') = ' + fn + ' / (' + fr + ' × ' + fnr + ') = ' + res
+        ];
+        return { result: res, steps: steps.join('\n') };
     }
     m = u.match(/NPR\s*\(?\s*(\d+)\s*,\s*(\d+)/i);
     if (m) {
         var n2 = parseInt(m[1]), r2 = parseInt(m[2]);
-        var res2 = fact(n2) / fact(n2 - r2);
-        return { result: res2, steps: 'P(' + n2 + ',' + r2 + ') = ' + n2 + '!/(' + (n2 - r2) + ')! = ' + res2 };
+        var fn2 = fact(n2), fnr2 = fact(n2 - r2);
+        var res2 = fn2 / fnr2;
+        var steps2 = [
+            'Permutation formula: P(n, r) = n! / (n − r)!',
+            'n = ' + n2 + ', r = ' + r2,
+            n2 + '! = ' + fn2,
+            '(' + n2 + ' − ' + r2 + ')! = ' + (n2 - r2) + '! = ' + fnr2,
+            'P(' + n2 + ',' + r2 + ') = ' + fn2 + ' / ' + fnr2 + ' = ' + res2
+        ];
+        return { result: res2, steps: steps2.join('\n') };
     }
     m = u.match(/(\d+)!/);
     if (m) {
         var n3 = parseInt(m[1]);
         var res3 = fact(n3);
-        return { result: res3, steps: n3 + '! = ' + res3 };
+        var chain = [];
+        for (var i = n3; i >= 1; i--) chain.push(i);
+        var steps3 = [
+            n3 + '! means multiplying every whole number from ' + n3 + ' down to 1',
+            n3 + '! = ' + chain.join(' × ') + ' = ' + res3
+        ];
+        return { result: res3, steps: steps3.join('\n') };
     }
-    return { result: 'Error', steps: 'No combinatorics operation detected' };
+    return { result: 'Error', steps: 'No combinatorics operation detected. Try nCr(5,2), nPr(5,2), or 5!' };
 }
 
 function evaluateSetTheory(expr) {
     var u = expr.toUpperCase();
-    if (u.indexOf('UNION') !== -1) return { result: 'A ∪ B', steps: 'Union: elements in A or B' };
-    if (u.indexOf('∩') !== -1) return { result: 'A ∩ B', steps: 'Intersection: elements in both' };
-    if (u.indexOf('COMPLEMENT') !== -1) return { result: "A'", steps: 'Complement: elements not in A' };
-    if (u.indexOf('\\') !== -1) return { result: 'A \\ B', steps: 'Difference: A minus B' };
-    if (u.indexOf('SUBSET') !== -1) return { result: 'A ⊆ B', steps: 'Subset: all A in B' };
-    if (u.indexOf('POWERSET') !== -1) return { result: 'P(A)', steps: 'Set of all subsets' };
-    return { result: 'Error', steps: 'No set operation detected' };
+    if (u.indexOf('UNION') !== -1) {
+        return { result: 'A ∪ B', steps: 'Union (A ∪ B): the set of every element that appears in A, in B, or in both — duplicates are only counted once.' };
+    }
+    if (u.indexOf('∩') !== -1) {
+        return { result: 'A ∩ B', steps: 'Intersection (A ∩ B): only the elements that appear in BOTH A and B at the same time.' };
+    }
+    if (u.indexOf('COMPLEMENT') !== -1) {
+        return { result: "A'", steps: "Complement (A'): every element in the universal set U that is NOT in A." };
+    }
+    if (u.indexOf('\\') !== -1) {
+        return { result: 'A \\ B', steps: 'Difference (A \\ B): elements that are in A but removed if they also appear in B.' };
+    }
+    if (u.indexOf('SUBSET') !== -1) {
+        return { result: 'A ⊆ B', steps: 'Subset (A ⊆ B): true when every single element of A can also be found in B.' };
+    }
+    if (u.indexOf('POWERSET') !== -1) {
+        return { result: 'P(A)', steps: 'Powerset (P(A)): the set of ALL possible subsets of A, including the empty set ∅ and A itself.\nIf A has n elements, P(A) has exactly 2^n subsets.' };
+    }
+    return { result: 'Error', steps: 'No set operation detected. Try UNION, ∩, COMPLEMENT, \\, SUBSET, or POWERSET.' };
 }
 
 function evaluateNumberTheory(expr) {
     var u = expr.toLowerCase();
+
     var m = u.match(/gcd\s*\(?\s*(\d+)\s*,\s*(\d+)/);
     if (m) {
-        var a = parseInt(m[1]), b = parseInt(m[2]);
-        var g = gcd(a, b);
-        return { result: g, steps: 'GCD(' + a + ',' + b + ') = ' + g };
+        var g = gcdWithSteps(parseInt(m[1]), parseInt(m[2]));
+        return { result: g.result, steps: g.steps.join('\n') };
     }
+
     m = u.match(/lcm\s*\(?\s*(\d+)\s*,\s*(\d+)/);
     if (m) {
         var a2 = parseInt(m[1]), b2 = parseInt(m[2]);
-        var l = (a2 * b2) / gcd(a2, b2);
-        return { result: l, steps: 'LCM(' + a2 + ',' + b2 + ') = ' + l };
+        var gStep = gcdWithSteps(a2, b2);
+        var l = (a2 * b2) / gStep.result;
+        var steps = gStep.steps.concat([
+            'LCM formula: lcm(a, b) = (a × b) / gcd(a, b)',
+            'lcm(' + a2 + ',' + b2 + ') = (' + a2 + ' × ' + b2 + ') / ' + gStep.result + ' = ' + (a2 * b2) + ' / ' + gStep.result + ' = ' + l
+        ]);
+        return { result: l, steps: steps.join('\n') };
     }
+
     m = u.match(/mod\s*\(?\s*(\d+)\s*,\s*(\d+)/);
     if (m) {
-        var mm = parseInt(m[1]) % parseInt(m[2]);
-        return { result: mm, steps: m[1] + ' mod ' + m[2] + ' = ' + mm };
+        var md = parseInt(m[1]), dv = parseInt(m[2]);
+        var q = Math.floor(md / dv);
+        var mm = md - q * dv;
+        var steps4 = [
+            md + ' ÷ ' + dv + ' = ' + q + ' remainder ' + mm,
+            'So ' + md + ' mod ' + dv + ' = ' + mm
+        ];
+        return { result: mm, steps: steps4.join('\n') };
     }
+
     m = u.match(/prime\?\s*\(?\s*(\d+)/);
     if (m) {
         var n = parseInt(m[1]);
-        var isPrime = n > 1;
-        for (var i = 2; i <= Math.sqrt(n); i++) { if (n % i === 0) { isPrime = false; break; } }
-        return { result: isPrime, steps: n + ' is ' + (isPrime ? 'prime' : 'not prime') };
+        var steps5 = [];
+        if (n < 2) {
+            steps5.push(n + ' is less than 2, so by definition it is not prime.');
+            return { result: false, steps: steps5.join('\n') };
+        }
+        var isPrime = true;
+        var limit = Math.floor(Math.sqrt(n));
+        steps5.push('Test divisibility of ' + n + ' by every whole number from 2 up to √' + n + ' ≈ ' + limit + ':');
+        var tested = 0;
+        for (var i = 2; i <= limit; i++) {
+            tested++;
+            if (n % i === 0) {
+                steps5.push(n + ' ÷ ' + i + ' = ' + (n / i) + ' exactly, so ' + n + ' has a divisor other than 1 and itself.');
+                isPrime = false;
+                break;
+            } else if (tested <= 12) {
+                steps5.push(n + ' ÷ ' + i + ' = ' + (n / i).toFixed(3) + ' → not a whole number, so ' + i + ' does not divide it.');
+            } else if (tested === 13) {
+                steps5.push('… continuing the same check for the remaining values up to ' + limit + ' …');
+            }
+        }
+        if (isPrime) steps5.push('No divisor was found, so ' + n + ' is prime.');
+        else steps5.push('Since a divisor was found, ' + n + ' is not prime.');
+        return { result: isPrime, steps: steps5.join('\n') };
     }
+
     m = u.match(/factor\s*\(?\s*(\d+)/);
     if (m) {
         var num = parseInt(m[1]);
         var factors = [];
+        var steps6 = ['Repeatedly dividing ' + num + ' by the smallest possible prime factor:'];
         var d = 2, x = num;
         while (d * d <= x) {
-            while (x % d === 0) { factors.push(d); x /= d; }
+            while (x % d === 0) {
+                steps6.push(x + ' ÷ ' + d + ' = ' + (x / d));
+                factors.push(d);
+                x /= d;
+            }
             d++;
         }
-        if (x > 1) factors.push(x);
-        return { result: factors.join(' × '), steps: num + ' = ' + factors.join(' × ') };
+        if (x > 1) {
+            factors.push(x);
+            steps6.push(x + ' is prime — no further division possible.');
+        }
+        steps6.push(num + ' = ' + factors.join(' × '));
+        return { result: factors.join(' × '), steps: steps6.join('\n') };
     }
-    return { result: 'Error', steps: 'No number theory operation detected' };
+
+    return { result: 'Error', steps: 'No number theory operation detected. Try gcd(12,8), lcm(12,8), mod(10,3), prime?(7), or factor(60).' };
 }
 
 function evaluateConversion(expr) {
     var m = expr.match(/(DEC → BINARY|BIN → DECIMAL|DEC → HEX|HEX → DECIMAL|DEC → OCT|OCT → DECIMAL|BIN → HEX)\s+(\S+)/i);
-    if (!m) return { result: 'Error', steps: 'Format: DEC → BINARY 255' };
+    if (!m) return { result: 'Error', steps: 'Format: DEC → BINARY 255 (tap a conversion button, then enter the value)' };
     var type = m[1].toUpperCase(), val = m[2];
+
     try {
-        if (type === 'DEC → BINARY') return { result: parseInt(val, 10).toString(2), steps: 'Convert ' + val + ' to binary = ' + parseInt(val, 10).toString(2) };
-        if (type === 'BIN → DECIMAL') return { result: parseInt(val, 2), steps: 'Binary ' + val + ' to decimal = ' + parseInt(val, 2) };
-        if (type === 'DEC → HEX') return { result: parseInt(val, 10).toString(16).toUpperCase(), steps: 'Convert ' + val + ' to hex = ' + parseInt(val, 10).toString(16).toUpperCase() };
-        if (type === 'HEX → DECIMAL') return { result: parseInt(val, 16), steps: 'Hex ' + val + ' to decimal = ' + parseInt(val, 16) };
-        if (type === 'DEC → OCT') return { result: parseInt(val, 10).toString(8), steps: 'Convert ' + val + ' to octal = ' + parseInt(val, 10).toString(8) };
-        if (type === 'OCT → DECIMAL') return { result: parseInt(val, 8), steps: 'Octal ' + val + ' to decimal = ' + parseInt(val, 8) };
-        if (type === 'BIN → HEX') {
-            var dec = parseInt(val, 2);
-            return { result: dec.toString(16).toUpperCase(), steps: 'Binary to decimal = ' + dec + ', then hex = ' + dec.toString(16).toUpperCase() };
+        if (type === 'DEC → BINARY') {
+            var r1 = toBaseWithSteps(parseInt(val, 10), 2);
+            return { result: r1.result, steps: r1.steps.join('\n') };
         }
-    } catch (e) { return { result: 'Error', steps: 'Invalid input' }; }
+        if (type === 'BIN → DECIMAL') {
+            var r2 = fromBaseWithSteps(val, 2);
+            return { result: r2.result, steps: r2.steps.join('\n') };
+        }
+        if (type === 'DEC → HEX') {
+            var r3 = toBaseWithSteps(parseInt(val, 10), 16);
+            return { result: r3.result, steps: r3.steps.join('\n') };
+        }
+        if (type === 'HEX → DECIMAL') {
+            var r4 = fromBaseWithSteps(val, 16);
+            return { result: r4.result, steps: r4.steps.join('\n') };
+        }
+        if (type === 'DEC → OCT') {
+            var r5 = toBaseWithSteps(parseInt(val, 10), 8);
+            return { result: r5.result, steps: r5.steps.join('\n') };
+        }
+        if (type === 'OCT → DECIMAL') {
+            var r6 = fromBaseWithSteps(val, 8);
+            return { result: r6.result, steps: r6.steps.join('\n') };
+        }
+        if (type === 'BIN → HEX') {
+            var toDecimal = fromBaseWithSteps(val, 2);
+            var toHex = toBaseWithSteps(toDecimal.result, 16);
+            var combined = ['Step 1 — convert binary to decimal first:'].concat(toDecimal.steps)
+                .concat(['Step 2 — convert that decimal value to hex:']).concat(toHex.steps);
+            return { result: toHex.result, steps: combined.join('\n') };
+        }
+    } catch (e) { return { result: 'Error', steps: 'Invalid input: ' + e.message }; }
     return { result: 'Error', steps: 'Unknown conversion' };
 }
 
@@ -641,14 +839,31 @@ function evaluateMatrix(expr) {
     var m = u.match(/det2x2\s*\(?\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)/);
     if (m) {
         var a = +m[1], b = +m[2], c = +m[3], d = +m[4];
-        var det = a * d - b * c;
-        return { result: det, steps: 'det([' + a + ' ' + b + '; ' + c + ' ' + d + ']) = ' + a + '*' + d + ' - ' + b + '*' + c + ' = ' + det };
+        var ad = a * d, bc = b * c, det = ad - bc;
+        var steps = [
+            'Matrix: [ ' + a + ' ' + b + ' ; ' + c + ' ' + d + ' ]',
+            'Determinant formula: det = (a×d) − (b×c)',
+            a + ' × ' + d + ' = ' + ad,
+            b + ' × ' + c + ' = ' + bc,
+            'det = ' + ad + ' − ' + bc + ' = ' + det
+        ];
+        return { result: det, steps: steps.join('\n') };
     }
     m = u.match(/add2x2\s*\(?\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)/);
     if (m) {
         var vals = m.slice(1, 9).map(Number);
-        var r = [vals[0] + vals[4], vals[1] + vals[5], vals[2] + vals[6], vals[3] + vals[7]];
-        return { result: '[' + r[0] + ' ' + r[1] + '; ' + r[2] + ' ' + r[3] + ']', steps: 'Element-wise sum of the two 2x2 matrices' };
+        var r11 = vals[0] + vals[4], r12 = vals[1] + vals[5], r21 = vals[2] + vals[6], r22 = vals[3] + vals[7];
+        var steps2 = [
+            'Matrix A = [ ' + vals[0] + ' ' + vals[1] + ' ; ' + vals[2] + ' ' + vals[3] + ' ]',
+            'Matrix B = [ ' + vals[4] + ' ' + vals[5] + ' ; ' + vals[6] + ' ' + vals[7] + ' ]',
+            'Add matching positions (element-wise):',
+            'Row1Col1: ' + vals[0] + ' + ' + vals[4] + ' = ' + r11,
+            'Row1Col2: ' + vals[1] + ' + ' + vals[5] + ' = ' + r12,
+            'Row2Col1: ' + vals[2] + ' + ' + vals[6] + ' = ' + r21,
+            'Row2Col2: ' + vals[3] + ' + ' + vals[7] + ' = ' + r22,
+            'Result = [ ' + r11 + ' ' + r12 + ' ; ' + r21 + ' ' + r22 + ' ]'
+        ];
+        return { result: '[' + r11 + ' ' + r12 + '; ' + r21 + ' ' + r22 + ']', steps: steps2.join('\n') };
     }
     m = u.match(/mul2x2\s*\(?\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)/);
     if (m) {
@@ -657,13 +872,22 @@ function evaluateMatrix(expr) {
         var r1c2 = v[0] * v[5] + v[1] * v[7];
         var r2c1 = v[2] * v[4] + v[3] * v[6];
         var r2c2 = v[2] * v[5] + v[3] * v[7];
-        return { result: '[' + r1c1 + ' ' + r1c2 + '; ' + r2c1 + ' ' + r2c2 + ']', steps: 'Matrix multiplication of two 2x2 matrices' };
+        var steps3 = [
+            'Matrix A = [ ' + v[0] + ' ' + v[1] + ' ; ' + v[2] + ' ' + v[3] + ' ]',
+            'Matrix B = [ ' + v[4] + ' ' + v[5] + ' ; ' + v[6] + ' ' + v[7] + ' ]',
+            'Each result cell = (row of A) · (column of B):',
+            'Row1Col1: (' + v[0] + '×' + v[4] + ') + (' + v[1] + '×' + v[6] + ') = ' + r1c1,
+            'Row1Col2: (' + v[0] + '×' + v[5] + ') + (' + v[1] + '×' + v[7] + ') = ' + r1c2,
+            'Row2Col1: (' + v[2] + '×' + v[4] + ') + (' + v[3] + '×' + v[6] + ') = ' + r2c1,
+            'Row2Col2: (' + v[2] + '×' + v[5] + ') + (' + v[3] + '×' + v[7] + ') = ' + r2c2,
+            'Result = [ ' + r1c1 + ' ' + r1c2 + ' ; ' + r2c1 + ' ' + r2c2 + ' ]'
+        ];
+        return { result: '[' + r1c1 + ' ' + r1c2 + '; ' + r2c1 + ' ' + r2c2 + ']', steps: steps3.join('\n') };
     }
-    return { result: 'Error', steps: 'No matrix operation detected' };
+    return { result: 'Error', steps: 'No matrix operation detected. Try det2x2(1,2,3,4), add2x2(...), or mul2x2(...) with 4 or 8 comma-separated numbers.' };
 }
 
 function evaluateComplex(expr) {
-    var m = expr.replace(/\s/g, '').match(/^(-?\d+(?:\.\d+)?)?([+-]\d+(?:\.\d+)?)?i$/);
     var parseComplex = function(str) {
         str = str.replace(/\s/g, '');
         var mm = str.match(/^(-?\d+(?:\.\d+)?)?([+-]\d+(?:\.\d+)?)?i$/);
@@ -676,14 +900,25 @@ function evaluateComplex(expr) {
     var fn = lower.match(/^(re|im|conj|abs|arg)\((.+)\)$/);
     if (fn) {
         var c = parseComplex(fn[2]);
-        if (!c) return { result: 'Error', steps: 'Could not parse complex number' };
-        if (fn[1] === 're') return { result: c.re, steps: 'Real part of ' + fn[2] + ' = ' + c.re };
-        if (fn[1] === 'im') return { result: c.im, steps: 'Imaginary part of ' + fn[2] + ' = ' + c.im };
-        if (fn[1] === 'conj') return { result: c.re + (-c.im >= 0 ? '+' : '') + (-c.im) + 'i', steps: 'Conjugate flips the sign of the imaginary part' };
-        if (fn[1] === 'abs') { var mag = Math.sqrt(c.re * c.re + c.im * c.im); return { result: mag, steps: '|a+bi| = sqrt(a²+b²) = ' + mag }; }
-        if (fn[1] === 'arg') { var ang = Math.atan2(c.im, c.re); return { result: ang, steps: 'arg(a+bi) = atan2(b,a) = ' + ang + ' rad' }; }
+        if (!c) return { result: 'Error', steps: 'Could not parse complex number. Use the form a+bi, e.g. 3+4i.' };
+        var label = 'Complex number: ' + c.re + (c.im >= 0 ? '+' : '') + c.im + 'i  (real part a=' + c.re + ', imaginary part b=' + c.im + ')';
+        if (fn[1] === 're') return { result: c.re, steps: label + '\nre(a+bi) = a\nre(' + fn[2] + ') = ' + c.re };
+        if (fn[1] === 'im') return { result: c.im, steps: label + '\nim(a+bi) = b\nim(' + fn[2] + ') = ' + c.im };
+        if (fn[1] === 'conj') {
+            var conj = c.re + (-c.im >= 0 ? '+' : '') + (-c.im) + 'i';
+            return { result: conj, steps: label + '\nThe conjugate flips the sign of the imaginary part: a+bi → a−bi\nconj(' + fn[2] + ') = ' + conj };
+        }
+        if (fn[1] === 'abs') {
+            var sq = c.re * c.re + c.im * c.im;
+            var mag = Math.sqrt(sq);
+            return { result: mag, steps: label + '\n|a+bi| = √(a² + b²)\n= √(' + c.re + '² + ' + c.im + '²)\n= √(' + (c.re * c.re) + ' + ' + (c.im * c.im) + ')\n= √' + sq + '\n= ' + mag };
+        }
+        if (fn[1] === 'arg') {
+            var ang = Math.atan2(c.im, c.re);
+            return { result: ang, steps: label + '\narg(a+bi) = atan2(b, a)\n= atan2(' + c.im + ', ' + c.re + ')\n= ' + ang + ' radians' };
+        }
     }
-    return { result: 'Error', steps: 'Use re(), im(), conj(), abs(), or arg() with a complex number like 3+4i' };
+    return { result: 'Error', steps: 'Use re(), im(), conj(), abs(), or arg() with a complex number like 3+4i.' };
 }
 
 // ================= MAIN EVALUATE WITH FALLBACK =================
@@ -728,7 +963,8 @@ function evaluate() {
 
     addHistory(raw, resStr, res.steps, currentBranch);
     buzz(15);
-    showStepsView(raw, resStr, res.steps || 'No detailed steps');
+    // Always jump straight to the step-by-step view so it's impossible to miss.
+    showStepsView(raw, resStr, res.steps || 'No detailed steps available for this expression.');
 }
 
 // ================= UI ACTIONS =================
@@ -806,6 +1042,7 @@ function doUpdateNow() {
 function showHelpPage() {
     var helpHtml = '<div class="about-text">' +
         '<h3>HOW TO USE THIS CALCULATOR</h3>' +
+        '<p><strong>Step-by-step:</strong> every time you press "=" the app takes you straight to a Step-by-Step Evaluation screen showing exactly how your answer was reached. Tap "← BACK" to return to the calculator.</p>' +
         '<h3>--- BASIC ARITHMETIC ---</h3>' +
         '<p><strong>Addition:</strong> 5 + 3</p>' +
         '<p><strong>Subtraction:</strong> 10 - 4</p>' +
@@ -829,9 +1066,9 @@ function showHelpPage() {
         '<h3>--- COMBINATORICS ---</h3>' +
         '<p>nCr(5,2) = 10 &nbsp; nPr(5,2) = 20</p>' +
         '<h3>--- NUMBER THEORY ---</h3>' +
-        '<p>gcd(12,8), lcm(12,8), mod(10,3), prime?(7), factor(60)</p>' +
+        '<p>gcd(12,8), lcm(12,8), mod(10,3), prime?(7), factor(60) — each shows its full working, not just the answer.</p>' +
         '<h3>--- NUMBER SYSTEM CONVERSIONS ---</h3>' +
-        '<p>Format: <strong>DEC → BINARY 255</strong> (also HEX, OCT, BIN variants)</p>' +
+        '<p>Format: <strong>DEC → BINARY 255</strong> (also HEX, OCT, BIN variants) — shows the division/remainder or place-value working.</p>' +
         '<h3>--- SET THEORY ---</h3>' +
         '<p>UNION, ∩, COMPLEMENT, \\, SUBSET, POWERSET — symbolic explanations</p>' +
         '<h3>--- MATRIX (2×2) ---</h3>' +
