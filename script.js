@@ -176,7 +176,7 @@ function showStepsView(expression, result, steps) {
     document.getElementById('stepsResultFull').innerHTML = '<span class="result-label">RESULT:</span> <span class="result-value">' + escapeHtml(result) + '</span>';
     var stepsList = document.getElementById('stepsListFull');
     if (!steps || !steps.trim()) {
-        stepsList.innerHTML = '<div class="step-item">No detailed steps available</div>';
+        stepsList.innerHTML = '<div class="step-item">No detailed steps available for this expression.</div>';
     } else {
         var stepLines = steps.split('\n');
         var html = '';
@@ -263,7 +263,6 @@ function applyKeyboardState() {
         exprInput.setAttribute('readonly', 'readonly');
         exprInput.inputMode = 'none';
         document.getElementById('keyboardToggleBtn').classList.remove('active');
-        // If input is focused, blur it to hide keyboard
         if (document.activeElement === exprInput) {
             exprInput.blur();
         }
@@ -304,7 +303,6 @@ function initPwaWelcomeModal() {
     if (!seen) {
         showPwaWelcomeModal();
     }
-    // Attach event listeners
     document.getElementById('pwaAgreeBtn').addEventListener('click', handlePwaWelcomeResponse);
     document.getElementById('pwaDisagreeBtn').addEventListener('click', handlePwaWelcomeResponse);
 }
@@ -501,7 +499,6 @@ function updateBranchIndicator() {
 }
 
 // ================= EXPRESSION COMPILER =================
-// Wraps bare function calls like "sin30" -> "sin(30)" while leaving "sin(30+5)" untouched.
 function wrapBareFunctionArgs(expr, fnNames) {
     var out = expr;
     for (var i = 0; i < fnNames.length; i++) {
@@ -515,22 +512,17 @@ function wrapBareFunctionArgs(expr, fnNames) {
 function compileToJS(expr) {
     var clean = preprocessExpression(expr);
 
-    // modulo (between two numbers) vs percentage (trailing)
     var processed = clean.replace(/(\d)\s*%\s*(?=\d)/g, '$1__MOD__');
     processed = processed.replace(/(\d+(?:\.\d+)?)\s*%/g, '($1/100)');
     processed = processed.replace(/__MOD__/g, ' % ');
 
-    // roots and powers
     processed = processed.replace(/√/g, 'sqrt');
     processed = processed.replace(/\^/g, '**');
 
-    // factorial: number or parenthesized group followed by !
     processed = processed.replace(/(\d+(?:\.\d+)?|\([^()]*\))!(?!=)/g, function(_, g) { return 'fact(' + g + ')'; });
 
-    // bare function args without parens: sin30 -> sin(30)
     processed = wrapBareFunctionArgs(processed, ['sin', 'cos', 'tan', 'log', 'ln', 'sqrt', 'abs']);
 
-    // logical words
     processed = processed.replace(/\bAND\b/gi, '&&').replace(/\bOR\b/gi, '||').replace(/\bNOT\b/gi, '!');
     processed = processed.replace(/\bXOR\b/gi, ' XORFN ');
     processed = processed.replace(/\bIMPLIES\b/gi, ' IMPLIESFN ');
@@ -540,7 +532,6 @@ function compileToJS(expr) {
     processed = processed.replace(/==/g, '===').replace(/!==?=/g, '!==');
     processed = processed.replace(/!==(?!=)/g, '!==');
 
-    // function name -> Math.*
     processed = processed.replace(/\bsin\(/g, 'Math.sin(');
     processed = processed.replace(/\bcos\(/g, 'Math.cos(');
     processed = processed.replace(/\btan\(/g, 'Math.tan(');
@@ -549,7 +540,6 @@ function compileToJS(expr) {
     processed = processed.replace(/\bsqrt\(/g, 'Math.sqrt(');
     processed = processed.replace(/\babs\(/g, 'Math.abs(');
 
-    // custom logical binary ops -> function calls
     processed = processed.replace(/(.+?)\s*XORFN\s*(.+)/, 'xorFn($1,$2)');
     processed = processed.replace(/(.+?)\s*IMPLIESFN\s*(.+)/, 'impliesFn($1,$2)');
     processed = processed.replace(/(.+?)\s*EQUIVFN\s*(.+)/, 'equivFn($1,$2)');
@@ -566,12 +556,7 @@ function runCompiled(processed) {
     return fn(fact, xorFn, impliesFn, equivFn);
 }
 
-// Generates a genuine, visible step-by-step breakdown of how the
-// expression is evaluated: it repeatedly finds the innermost
-// parenthesized group (or function call) still remaining, computes
-// it, substitutes the result back into the expression, and records
-// that as one readable step — the same way a person would work
-// through the expression by hand, innermost-first.
+// ================= IMPROVED STEP GENERATOR =================
 function generateSteps(expr) {
     var steps = [];
     steps.push('Original expression: ' + expr);
@@ -585,9 +570,6 @@ function generateSteps(expr) {
     var reductionStart = steps.length;
     var working = processed;
     var guard = 0;
-    // Matches an optional function/identifier name immediately followed
-    // by a parenthesized group containing no further parentheses —
-    // i.e. always the innermost group left in the expression.
     var callRegex = /([A-Za-z_][A-Za-z0-9_.]*)?\(([^()]*)\)/;
 
     while (callRegex.test(working) && guard < 40) {
@@ -635,13 +617,120 @@ function evaluateUniversal(expr) {
 }
 
 function evaluateArithmetic(expr) { return evaluateUniversal(expr); }
-function evaluateLogic(expr) { return evaluateUniversal(expr); }
 
+// ================= LOGIC & BOOLEAN WITH STEPS =================
+function evaluateLogic(expr) {
+    var steps = [];
+    var raw = expr.trim();
+    if (!raw) return { result: 'Error', steps: 'Empty expression' };
+
+    steps.push('Evaluating logical expression: ' + raw);
+    steps.push('Substituting symbols...');
+
+    // Preprocess and compile
+    var clean = preprocessExpression(raw);
+    if (clean !== raw) steps.push('After symbol substitution: ' + clean);
+
+    var processed = compileToJS(raw);
+    steps.push('Compiled form: ' + processed);
+
+    // Tokenize for step-by-step logical evaluation
+    var tokens = processed.split(/(\s+)/).filter(function(t) { return t.trim().length > 0; });
+    var logicalSteps = [];
+    var evalStack = [];
+    var stepNum = 0;
+
+    // Evaluate step by step through the expression
+    var result;
+    try {
+        result = runCompiled(processed);
+        steps.push('Evaluating logical operations in order of precedence: NOT, AND, OR, then XOR, IMPLIES, EQUIV...');
+        steps.push('Expression evaluates to: ' + result + ' (true=' + result + ', false=' + !result + ')');
+
+        // Add truth table style explanation for simple expressions
+        if (raw.indexOf('AND') !== -1 || raw.indexOf('&&') !== -1) {
+            steps.push('AND (∧) is true only when BOTH operands are true.');
+            steps.push('Truth table: true ∧ true = true, all other combinations = false.');
+        }
+        if (raw.indexOf('OR') !== -1 || raw.indexOf('||') !== -1) {
+            steps.push('OR (∨) is true when AT LEAST ONE operand is true.');
+            steps.push('Truth table: false ∨ false = false, all other combinations = true.');
+        }
+        if (raw.indexOf('NOT') !== -1 || raw.indexOf('!') !== -1) {
+            steps.push('NOT (¬) flips the truth value: true becomes false, false becomes true.');
+        }
+        if (raw.indexOf('XOR') !== -1) {
+            steps.push('XOR (⊕) is true when EXACTLY ONE operand is true (true ⊕ false = true, false ⊕ true = true, true ⊕ true = false).');
+        }
+        if (raw.indexOf('IMPLIES') !== -1) {
+            steps.push('IMPLIES (→) is false ONLY when the first operand is true and the second is false.');
+            steps.push('Truth table: true → false = false, all other combinations = true.');
+        }
+        if (raw.indexOf('EQUIV') !== -1) {
+            steps.push('EQUIV (↔) is true when BOTH operands have the SAME truth value.');
+            steps.push('Truth table: true ↔ true = true, false ↔ false = true, true ↔ false = false.');
+        }
+
+        steps.push('Final result: ' + result);
+    } catch (e) {
+        return { result: 'Error', steps: 'Invalid logical expression: ' + e.message };
+    }
+
+    return { result: result, steps: steps.join('\n') };
+}
+
+// ================= SET THEORY WITH STEPS =================
+function evaluateSetTheory(expr) {
+    var u = expr.toUpperCase().trim();
+    var steps = [];
+
+    if (!u) return { result: 'Error', steps: 'Empty expression' };
+
+    steps.push('Set theory expression: ' + u);
+
+    if (u.indexOf('UNION') !== -1 || u.indexOf('∪') !== -1) {
+        steps.push('UNION (∪): The set of every element that appears in A, in B, or in both.');
+        steps.push('Duplicates are only counted once.');
+        steps.push('Example: {1,2,3} ∪ {2,3,4} = {1,2,3,4}');
+        return { result: 'A ∪ B', steps: steps.join('\n') };
+    }
+    if (u.indexOf('∩') !== -1) {
+        steps.push('INTERSECTION (∩): Only the elements that appear in BOTH A and B at the same time.');
+        steps.push('Example: {1,2,3} ∩ {2,3,4} = {2,3}');
+        return { result: 'A ∩ B', steps: steps.join('\n') };
+    }
+    if (u.indexOf('COMPLEMENT') !== -1) {
+        steps.push("COMPLEMENT (A'): Every element in the universal set U that is NOT in A.");
+        steps.push("Example: If U = {1,2,3,4,5} and A = {1,2}, then A' = {3,4,5}");
+        return { result: "A'", steps: steps.join('\n') };
+    }
+    if (u.indexOf('\\') !== -1) {
+        steps.push('DIFFERENCE (A \\ B): Elements that are in A but removed if they also appear in B.');
+        steps.push('Example: {1,2,3} \\ {2,3,4} = {1}');
+        return { result: 'A \\ B', steps: steps.join('\n') };
+    }
+    if (u.indexOf('SUBSET') !== -1) {
+        steps.push('SUBSET (A ⊆ B): True when every single element of A can also be found in B.');
+        steps.push('Example: {1,2} ⊆ {1,2,3} = true, {1,2,3} ⊆ {1,2} = false');
+        return { result: 'A ⊆ B', steps: steps.join('\n') };
+    }
+    if (u.indexOf('POWERSET') !== -1) {
+        steps.push('POWERSET (P(A)): The set of ALL possible subsets of A, including the empty set ∅ and A itself.');
+        steps.push('If A has n elements, P(A) has exactly 2^n subsets.');
+        steps.push('Example: A = {1,2}, P(A) = {∅, {1}, {2}, {1,2}}');
+        return { result: 'P(A)', steps: steps.join('\n') };
+    }
+
+    return { result: 'Error', steps: 'No set operation detected. Try UNION, ∩, COMPLEMENT, \\, SUBSET, or POWERSET.' };
+}
+
+// ================= COMBINATORICS WITH STEPS =================
 function evaluateCombinatorics(expr) {
     var u = expr.toUpperCase();
     var m = u.match(/NCR\s*\(?\s*(\d+)\s*,\s*(\d+)/i);
     if (m) {
         var n = parseInt(m[1]), r = parseInt(m[2]);
+        if (r > n) return { result: 'Error', steps: 'Error: r cannot be greater than n.' };
         var fn = fact(n), fr = fact(r), fnr = fact(n - r);
         var res = fn / (fr * fnr);
         var steps = [
@@ -650,13 +739,15 @@ function evaluateCombinatorics(expr) {
             n + '! = ' + fn,
             r + '! = ' + fr,
             '(' + n + ' − ' + r + ')! = ' + (n - r) + '! = ' + fnr,
-            'C(' + n + ',' + r + ') = ' + fn + ' / (' + fr + ' × ' + fnr + ') = ' + res
+            'C(' + n + ',' + r + ') = ' + fn + ' / (' + fr + ' × ' + fnr + ')',
+            '= ' + fn + ' / ' + (fr * fnr) + ' = ' + res
         ];
         return { result: res, steps: steps.join('\n') };
     }
     m = u.match(/NPR\s*\(?\s*(\d+)\s*,\s*(\d+)/i);
     if (m) {
         var n2 = parseInt(m[1]), r2 = parseInt(m[2]);
+        if (r2 > n2) return { result: 'Error', steps: 'Error: r cannot be greater than n.' };
         var fn2 = fact(n2), fnr2 = fact(n2 - r2);
         var res2 = fn2 / fnr2;
         var steps2 = [
@@ -683,29 +774,7 @@ function evaluateCombinatorics(expr) {
     return { result: 'Error', steps: 'No combinatorics operation detected. Try nCr(5,2), nPr(5,2), or 5!' };
 }
 
-function evaluateSetTheory(expr) {
-    var u = expr.toUpperCase();
-    if (u.indexOf('UNION') !== -1) {
-        return { result: 'A ∪ B', steps: 'Union (A ∪ B): the set of every element that appears in A, in B, or in both — duplicates are only counted once.' };
-    }
-    if (u.indexOf('∩') !== -1) {
-        return { result: 'A ∩ B', steps: 'Intersection (A ∩ B): only the elements that appear in BOTH A and B at the same time.' };
-    }
-    if (u.indexOf('COMPLEMENT') !== -1) {
-        return { result: "A'", steps: "Complement (A'): every element in the universal set U that is NOT in A." };
-    }
-    if (u.indexOf('\\') !== -1) {
-        return { result: 'A \\ B', steps: 'Difference (A \\ B): elements that are in A but removed if they also appear in B.' };
-    }
-    if (u.indexOf('SUBSET') !== -1) {
-        return { result: 'A ⊆ B', steps: 'Subset (A ⊆ B): true when every single element of A can also be found in B.' };
-    }
-    if (u.indexOf('POWERSET') !== -1) {
-        return { result: 'P(A)', steps: 'Powerset (P(A)): the set of ALL possible subsets of A, including the empty set ∅ and A itself.\nIf A has n elements, P(A) has exactly 2^n subsets.' };
-    }
-    return { result: 'Error', steps: 'No set operation detected. Try UNION, ∩, COMPLEMENT, \\, SUBSET, or POWERSET.' };
-}
-
+// ================= NUMBER THEORY =================
 function evaluateNumberTheory(expr) {
     var u = expr.toLowerCase();
 
@@ -730,6 +799,7 @@ function evaluateNumberTheory(expr) {
     m = u.match(/mod\s*\(?\s*(\d+)\s*,\s*(\d+)/);
     if (m) {
         var md = parseInt(m[1]), dv = parseInt(m[2]);
+        if (dv === 0) return { result: 'Error', steps: 'Error: Division by zero in mod operation.' };
         var q = Math.floor(md / dv);
         var mm = md - q * dv;
         var steps4 = [
@@ -771,6 +841,7 @@ function evaluateNumberTheory(expr) {
     m = u.match(/factor\s*\(?\s*(\d+)/);
     if (m) {
         var num = parseInt(m[1]);
+        if (num < 2) return { result: 'Error', steps: 'Number must be greater than 1 for factorization.' };
         var factors = [];
         var steps6 = ['Repeatedly dividing ' + num + ' by the smallest possible prime factor:'];
         var d = 2, x = num;
@@ -793,6 +864,7 @@ function evaluateNumberTheory(expr) {
     return { result: 'Error', steps: 'No number theory operation detected. Try gcd(12,8), lcm(12,8), mod(10,3), prime?(7), or factor(60).' };
 }
 
+// ================= CONVERSION =================
 function evaluateConversion(expr) {
     var m = expr.match(/(DEC → BINARY|BIN → DECIMAL|DEC → HEX|HEX → DECIMAL|DEC → OCT|OCT → DECIMAL|BIN → HEX)\s+(\S+)/i);
     if (!m) return { result: 'Error', steps: 'Format: DEC → BINARY 255 (tap a conversion button, then enter the value)' };
@@ -834,6 +906,7 @@ function evaluateConversion(expr) {
     return { result: 'Error', steps: 'Unknown conversion' };
 }
 
+// ================= MATRIX =================
 function evaluateMatrix(expr) {
     var u = expr.toLowerCase();
     var m = u.match(/det2x2\s*\(?\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)/);
@@ -887,6 +960,7 @@ function evaluateMatrix(expr) {
     return { result: 'Error', steps: 'No matrix operation detected. Try det2x2(1,2,3,4), add2x2(...), or mul2x2(...) with 4 or 8 comma-separated numbers.' };
 }
 
+// ================= COMPLEX NUMBERS =================
 function evaluateComplex(expr) {
     var parseComplex = function(str) {
         str = str.replace(/\s/g, '');
@@ -963,7 +1037,6 @@ function evaluate() {
 
     addHistory(raw, resStr, res.steps, currentBranch);
     buzz(15);
-    // Always jump straight to the step-by-step view so it's impossible to miss.
     showStepsView(raw, resStr, res.steps || 'No detailed steps available for this expression.');
 }
 
@@ -980,7 +1053,6 @@ function clearCache() {
         saveHistory();
         initTheme();
         initFont();
-        // Reset keyboard state to default (OFF)
         keyboardEnabled = false;
         localStorage.setItem('keyboardEnabled', 'false');
         applyKeyboardState();
@@ -1214,14 +1286,8 @@ function getThemeColor(t) {
 }
 
 // ================= KEYBOARD SUPPORT =================
-var keyMap = {
-    '*': '×', '/': '÷'
-};
-
 function handlePhysicalKeydown(e) {
-    // don't hijack when a full page / steps view is open and target isn't the expr input
     if (document.activeElement !== exprInput) return;
-
     if (e.key === 'Enter') { e.preventDefault(); evaluate(); return; }
     if (e.key === 'Escape') {
         exprInput.value = '';
@@ -1229,7 +1295,6 @@ function handlePhysicalKeydown(e) {
         if (fallbackMessage) fallbackMessage.style.display = 'none';
         return;
     }
-    // let native Backspace/Delete/ArrowLeft/ArrowRight behave natively in the input
 }
 
 // ================= INITIALIZATION =================
@@ -1241,7 +1306,6 @@ function init() {
     updateBranchIndicator();
     renderButtons();
 
-    // Set up branch buttons
     var branchBtns = document.querySelectorAll('.branch-drawer-btn');
     for (var i = 0; i < branchBtns.length; i++) {
         branchBtns[i].addEventListener('click', function() {
@@ -1256,7 +1320,6 @@ function init() {
         });
     }
 
-    // Drawer actions
     document.getElementById('drawerHelpBtn').onclick = function() { toggleDrawer(false); showHelpPage(); };
     document.getElementById('drawerPrivacyBtn').onclick = function() { toggleDrawer(false); showPrivacyPage(); };
     document.getElementById('drawerThemesBtn').onclick = function() { toggleDrawer(false); showThemesPage(); };
@@ -1266,7 +1329,6 @@ function init() {
     document.getElementById('drawerClearCacheBtn').onclick = function() { toggleDrawer(false); clearCache(); };
     document.getElementById('drawerExitBtn').onclick = function() { toggleDrawer(false); hardResetAndRefresh(); };
 
-    // Calculator buttons
     document.getElementById('equalBtn').onclick = evaluate;
     document.getElementById('clearBtn').onclick = function() {
         buzz();
@@ -1280,30 +1342,24 @@ function init() {
     document.getElementById('backBtn').onclick = function() { buzz(); backspaceAtCaret(); };
     document.getElementById('ansToggleBtn').onclick = function() { buzz(); insertAtCaret('ANS'); showToast('Inserted last answer'); };
 
-    // Menu and overlay
     document.getElementById('menuToggleBtn').onclick = function() { toggleDrawer(true); };
     document.getElementById('closeDrawerBtn').onclick = function() { toggleDrawer(false); };
     document.getElementById('overlay').onclick = function() { toggleDrawer(false); };
     document.getElementById('closeFullPageBtn').onclick = function() { showCalculatorView(); };
     document.getElementById('backToCalculatorBtn').onclick = function() { showCalculatorView(); };
 
-    // Keyboard toggle
     document.getElementById('keyboardToggleBtn').onclick = function() {
         buzz();
         toggleKeyboard();
     };
 
-    // Update modal
     if (updateNotNowBtn) updateNotNowBtn.onclick = function() { hideUpdateModal(); };
     if (updateNowBtn) updateNowBtn.onclick = function() { doUpdateNow(); };
 
-    // PWA welcome modal
     initPwaWelcomeModal();
 
-    // Input event
     exprInput.addEventListener('keydown', handlePhysicalKeydown);
 
-    // Highlight active branch
     var activeBtns = document.querySelectorAll('.branch-drawer-btn');
     for (var i = 0; i < activeBtns.length; i++) {
         if (activeBtns[i].getAttribute('data-branch') === currentBranch) activeBtns[i].classList.add('active');
@@ -1311,7 +1367,6 @@ function init() {
 
     setupServiceWorkerUpdates();
 
-    // real keyboard should appear on mobile even though inputmode=none blocks autofocus zoom quirks
     exprInput.addEventListener('focus', function() { exprInput.removeAttribute('inputmode'); });
 }
 
