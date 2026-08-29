@@ -1,0 +1,8 @@
+{
+  "name": "Universal CS Calculator",
+  "description": "Universal Computer Science and Scientific Calculator supporting Arithmetic, Bitwise, Combinatorics, Logic, Set Theory, Number Theory, Matrices, and Complex Numbers.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

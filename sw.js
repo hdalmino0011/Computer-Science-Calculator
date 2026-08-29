@@ -1,33 +1,35 @@
-const CACHE_NAME = 'cs-calc-v2';
+const CACHE_NAME = 'cs-calc-v3';
 const ASSETS = [
+  './',
   'index.html',
   'styles.css',
   'script.js',
   'manifest.json',
+  'privacy.html',
   'icon-192.png',
   'icon-512.png'
 ];
 
-// Install event - cache all assets
+// Install event - precache all application shell assets
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
-        console.log('Caching assets...');
+        console.log('[ServiceWorker] Pre-caching offline shell assets...');
         return cache.addAll(ASSETS);
       })
       .then(() => self.skipWaiting())
   );
 });
 
-// Activate event - clean up old caches and take control
+// Activate event - clean up previous outdated caches
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
           if (cacheName !== CACHE_NAME) {
-            console.log('Deleting old cache:', cacheName);
+            console.log('[ServiceWorker] Removing old cache:', cacheName);
             return caches.delete(cacheName);
           }
         })
@@ -36,38 +38,53 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch event - serve from cache first, fallback to network
+// Fetch event - Cache-First with Network fallback and dynamic caching
 self.addEventListener('fetch', (event) => {
+  // Only handle GET requests
+  if (event.request.method !== 'GET') return;
+
   event.respondWith(
-    caches.match(event.request)
+    caches.match(event.request, { ignoreSearch: true })
       .then((cachedResponse) => {
-        // Return cached response if found
         if (cachedResponse) {
+          // Serve from cache immediately
           return cachedResponse;
         }
-        
-        // Otherwise fetch from network
+
+        // Fetch from network if not in cache
         return fetch(event.request)
           .then((networkResponse) => {
-            // Cache the new response for future offline use
-            return caches.open(CACHE_NAME)
-              .then((cache) => {
-                cache.put(event.request, networkResponse.clone());
-                return networkResponse;
-              });
+            if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
+              return networkResponse;
+            }
+
+            // Dynamically cache valid responses
+            const responseToCache = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseToCache);
+            });
+
+            return networkResponse;
           })
           .catch(() => {
-            // If both cache and network fail, show offline page
-            // For HTML requests, return the cached index.html
-            if (event.request.headers.get('accept').includes('text/html')) {
+            // Offline fallback for HTML navigation
+            if (event.request.mode === 'navigate' || (event.request.headers.get('accept') && event.request.headers.get('accept').includes('text/html'))) {
               return caches.match('index.html');
             }
-            // For other resources, return a simple offline response
-            return new Response('Offline - Please connect to the internet', {
+
+            return new Response('Offline - Universal CS Calculator is ready offline.', {
               status: 503,
-              statusText: 'Service Unavailable'
+              statusText: 'Service Unavailable',
+              headers: { 'Content-Type': 'text/plain' }
             });
           });
       })
   );
+});
+
+// Listen for skipWaiting messages from update prompt
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.action === 'skipWaiting') {
+    self.skipWaiting();
+  }
 });

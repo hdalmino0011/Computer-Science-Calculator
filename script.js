@@ -2,7 +2,10 @@
 var currentBranch = "universal";
 var historyEntries = [];
 var lastAnswer = 0;
-var keyboardEnabled = false; // Default: keyboard OFF
+var keyboardEnabled = false;
+var lastCalculatedSteps = '';
+var lastCalculatedExpression = '';
+var lastCalculatedResult = '';
 
 // DOM Elements
 var exprInput = document.getElementById('exprInput');
@@ -15,6 +18,7 @@ var stepsView = document.getElementById('stepsView');
 var fullPageView = document.getElementById('fullPageView');
 var fullPageTitle = document.getElementById('fullPageTitle');
 var fullPageContent = document.getElementById('fullPageContent');
+var desktopSideContent = document.getElementById('desktopSideContent');
 var toastEl = document.getElementById('toast');
 
 var branchNames = {
@@ -36,7 +40,7 @@ function showToast(msg) {
     toastEl.textContent = msg;
     toastEl.classList.add('show');
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(function() { toastEl.classList.remove('show'); }, 1800);
+    toastTimer = setTimeout(function() { toastEl.classList.remove('show'); }, 2000);
 }
 
 // ================= HAPTIC FEEDBACK =================
@@ -44,6 +48,147 @@ function buzz(ms) {
     if (navigator.vibrate) {
         try { navigator.vibrate(ms || 8); } catch (e) {}
     }
+}
+
+// ================= UTILITIES =================
+function escapeHtml(s) {
+    if (s === undefined || s === null) return '';
+    return s.toString().replace(/[&<>]/g, function(m) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m];
+    });
+}
+
+function fact(n) {
+    if (n < 0 || Math.floor(n) !== n) return NaN;
+    if (n === 0 || n === 1) return 1;
+    var r = 1;
+    for (var i = 2; i <= n; i++) r *= i;
+    return r;
+}
+
+function gcd(a, b) {
+    a = Math.abs(a); b = Math.abs(b);
+    while (b) { var t = b; b = a % b; a = t; }
+    return a;
+}
+
+// Extended Euclidean Algorithm: returns { gcd, s, t, steps }
+function extendedGcdWithSteps(a, b) {
+    var steps = [];
+    var x = Math.abs(a), y = Math.abs(b);
+    steps.push('<strong>Euclidean Algorithm for gcd(' + x + ', ' + y + '):</strong>');
+    if (y === 0) {
+        steps.push('gcd(' + x + ', 0) = ' + x);
+        return { gcd: x, s: 1, t: 0, steps: steps };
+    }
+
+    var r0 = x, r1 = y;
+    var s0 = 1, s1 = 0;
+    var t0 = 0, t1 = 1;
+    var divisions = [];
+
+    while (r1 !== 0) {
+        var q = Math.floor(r0 / r1);
+        var r2 = r0 % r1;
+        var s2 = s0 - q * s1;
+        var t2 = t0 - q * t1;
+        divisions.push({ r0: r0, r1: r1, q: q, r2: r2 });
+        steps.push(r0 + ' = ' + q + ' × ' + r1 + ' + ' + r2);
+        r0 = r1; r1 = r2;
+        s0 = s1; s1 = s2;
+        t0 = t1; t1 = t2;
+    }
+
+    steps.push('Last non-zero remainder = <strong>' + r0 + '</strong> (GCD)');
+    steps.push('<strong>Bézout Identity:</strong> ' + r0 + ' = (' + s0 + ' × ' + x + ') + (' + t0 + ' × ' + y + ')');
+    return { gcd: r0, s: s0, t: t0, steps: steps };
+}
+
+// Repeated division for base conversion
+function toBaseWithSteps(num, base) {
+    var steps = [];
+    var negative = num < 0;
+    var n = Math.trunc(Math.abs(num));
+    var baseNames = { 2: 'Binary', 8: 'Octal', 10: 'Decimal', 16: 'Hexadecimal' };
+    var targetName = baseNames[base] || ('Base-' + base);
+
+    steps.push('<strong>Converting ' + (negative ? '-' : '') + n + ' to ' + targetName + ' (Base ' + base + '):</strong>');
+
+    if (n === 0) {
+        steps.push('0 ÷ ' + base + ' = 0 with remainder 0');
+        steps.push('Result: <strong>0</strong>');
+        return { result: '0', steps: steps };
+    }
+
+    var digits = [];
+    var stepIndex = 1;
+    var tableRows = [];
+
+    while (n > 0) {
+        var q = Math.floor(n / base);
+        var r = n % base;
+        var digitChar = r.toString(base).toUpperCase();
+        digits.unshift(digitChar);
+        tableRows.push('Step ' + stepIndex + ': ' + n + ' ÷ ' + base + ' = ' + q + '  (Remainder: ' + digitChar + ')');
+        n = q;
+        stepIndex++;
+    }
+
+    steps.push(tableRows.join('\n'));
+    steps.push('Read remainders from bottom to top (most significant to least significant): <strong>' + digits.join('') + '</strong>');
+
+    var resultStr = (negative ? '-' : '') + digits.join('');
+    if (negative) {
+        steps.push('Include negative sign: <strong>' + resultStr + '</strong>');
+    }
+
+    // Include 8-bit/16-bit binary two\'s complement if base is 2
+    if (base === 2 && !negative && num <= 255) {
+        var padded8 = digits.join('').padStart(8, '0');
+        steps.push('8-bit binary representation: <code>' + padded8.slice(0, 4) + ' ' + padded8.slice(4) + '</code>');
+    }
+
+    return { result: resultStr, steps: steps };
+}
+
+// Place-value expansion for converting back to decimal
+function fromBaseWithSteps(str, base) {
+    var steps = [];
+    var clean = str.toUpperCase().trim();
+    var negative = clean.charAt(0) === '-';
+    if (negative) clean = clean.substring(1);
+    clean = clean.replace(/^0+(?=.)/, '');
+    var baseNames = { 2: 'Binary', 8: 'Octal', 16: 'Hexadecimal' };
+    var sourceName = baseNames[base] || ('Base-' + base);
+
+    steps.push('<strong>Converting ' + (negative ? '-' : '') + clean + ' from ' + sourceName + ' (Base ' + base + ') to Decimal:</strong>');
+
+    var chars = clean.split('');
+    var n = chars.length;
+    var total = 0;
+    var parts = [];
+
+    for (var i = 0; i < n; i++) {
+        var digit = parseInt(chars[i], base);
+        if (isNaN(digit)) {
+            steps.push('Invalid digit "' + chars[i] + '" for base ' + base);
+            return { result: NaN, steps: steps };
+        }
+        var power = n - 1 - i;
+        var val = digit * Math.pow(base, power);
+        parts.push(chars[i] + ' × ' + base + '<sup>' + power + '</sup> (' + digit + ' × ' + Math.pow(base, power) + ' = ' + val + ')');
+        total += val;
+    }
+
+    steps.push(parts.join('\n'));
+    steps.push('Sum of all positional values: ' + parts.map(function(p) { return p.split(' = ')[1].replace(')', ''); }).join(' + ') + ' = <strong>' + total + '</strong>');
+
+    if (negative) {
+        total = -total;
+        steps.push('Applying negative sign: <strong>' + total + '</strong>');
+    }
+
+    return { result: total, steps: steps };
 }
 
 // ================= SYMBOL PRE-PROCESSOR =================
@@ -66,133 +211,113 @@ function preprocessExpression(expr) {
     processed = processed.replace(/π/g, '(' + Math.PI + ')');
     processed = processed.replace(/(?<![a-zA-Z])e(?![a-zA-Z(])/g, '(' + Math.E + ')');
     processed = processed.replace(/ANS/gi, '(' + lastAnswer + ')');
-    // single "=" (not part of ==, !=, <=, >=) means equality comparison
     processed = processed.replace(/([^\s<>!=])=([^=])/g, '$1==$2');
     return processed;
 }
 
-// ================= UTILITIES =================
-function escapeHtml(s) {
-    if (!s) return '';
-    return s.toString().replace(/[&<>]/g, function(m) {
-        return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m];
-    });
+// ================= CARET-AWARE INPUT =================
+function insertAtCaret(text) {
+    var el = exprInput;
+    var start = el.selectionStart != null ? el.selectionStart : el.value.length;
+    var end = el.selectionEnd != null ? el.selectionEnd : el.value.length;
+    var before = el.value.substring(0, start);
+    var after = el.value.substring(end);
+    el.value = before + text + after;
+    var newPos = start + text.length;
+    el.focus();
+    el.setSelectionRange(newPos, newPos);
 }
 
-function fact(n) {
-    if (n < 0 || Math.floor(n) !== n) return NaN;
-    var r = 1;
-    for (var i = 2; i <= n; i++) r *= i;
-    return r;
+function moveCaret(delta) {
+    var el = exprInput;
+    var pos = (el.selectionStart != null ? el.selectionStart : el.value.length) + delta;
+    pos = Math.max(0, Math.min(el.value.length, pos));
+    el.focus();
+    el.setSelectionRange(pos, pos);
 }
 
-function gcd(a, b) {
-    a = Math.abs(a); b = Math.abs(b);
-    while (b) { var t = b; b = a % b; a = t; }
-    return a;
-}
-
-// GCD via the Euclidean algorithm, with each division step recorded
-// so it can be shown to the user instead of just the final number.
-function gcdWithSteps(a, b) {
-    var steps = [];
-    var x = Math.abs(a), y = Math.abs(b);
-    steps.push('Using the Euclidean algorithm on gcd(' + x + ', ' + y + '):');
-    if (y === 0) {
-        steps.push('gcd(' + x + ', 0) = ' + x);
-        return { result: x, steps: steps };
+function backspaceAtCaret() {
+    var el = exprInput;
+    var start = el.selectionStart != null ? el.selectionStart : el.value.length;
+    var end = el.selectionEnd != null ? el.selectionEnd : el.value.length;
+    if (start === end) {
+        if (start === 0) return;
+        el.value = el.value.substring(0, start - 1) + el.value.substring(end);
+        el.focus();
+        el.setSelectionRange(start - 1, start - 1);
+    } else {
+        el.value = el.value.substring(0, start) + el.value.substring(end);
+        el.focus();
+        el.setSelectionRange(start, start);
     }
-    while (y) {
-        var q = Math.floor(x / y);
-        var r = x % y;
-        steps.push(x + ' = ' + q + ' × ' + y + ' + ' + r);
-        x = y; y = r;
-    }
-    steps.push('The last non-zero remainder is the GCD: ' + x);
-    return { result: x, steps: steps };
 }
 
-// Converts a decimal integer to another base (2/8/16) via the
-// classic repeated-division-and-remainder method, step by step.
-function toBaseWithSteps(num, base) {
-    var steps = [];
-    var negative = num < 0;
-    var n = Math.trunc(Math.abs(num));
-    if (n === 0) {
-        steps.push('0 ÷ ' + base + ' = 0  remainder 0');
-        steps.push('Result: 0');
-        return { result: '0', steps: steps };
-    }
-    var digits = [];
-    while (n > 0) {
-        var q = Math.floor(n / base);
-        var r = n % base;
-        var digitChar = r.toString(base).toUpperCase();
-        steps.push(n + ' ÷ ' + base + ' = ' + q + '  remainder ' + digitChar);
-        digits.unshift(digitChar);
-        n = q;
-    }
-    var resultStr = (negative ? '-' : '') + digits.join('');
-    steps.push('Reading the remainders from bottom to top: ' + digits.join(''));
-    if (negative) steps.push('Applying the original negative sign: ' + resultStr);
-    return { result: resultStr, steps: steps };
-}
-
-// Converts a number written in another base back to decimal by
-// expanding each digit × base^position, step by step.
-function fromBaseWithSteps(str, base) {
-    var steps = [];
-    var clean = str.toUpperCase().trim();
-    var negative = clean.charAt(0) === '-';
-    if (negative) clean = clean.substring(1);
-    clean = clean.replace(/^0+(?=.)/, '');
-    var chars = clean.split('');
-    var n = chars.length;
-    var total = 0;
-    var parts = [];
-    for (var i = 0; i < n; i++) {
-        var digit = parseInt(chars[i], base);
-        if (isNaN(digit)) { steps.push('Invalid digit "' + chars[i] + '" for base ' + base); return { result: NaN, steps: steps }; }
-        var power = n - 1 - i;
-        var val = digit * Math.pow(base, power);
-        parts.push(chars[i] + ' × ' + base + '^' + power + ' = ' + val);
-        total += val;
-    }
-    steps.push(parts.join('\n'));
-    steps.push('Sum of all place values = ' + total);
-    if (negative) { total = -total; steps.push('Applying the original negative sign: ' + total); }
-    return { result: total, steps: steps };
-}
-
-// ================= VIEW SWITCHING =================
+// ================= VIEW SWITCHING & SIDE PANEL =================
 function showCalculatorView() {
     calculatorView.style.display = 'flex';
     stepsView.style.display = 'none';
     fullPageView.style.display = 'none';
 }
 
+function formatStepsHtml(steps) {
+    if (!steps || !steps.trim()) {
+        return '<div class="step-item">No detailed steps available for this calculation.</div>';
+    }
+    var stepLines = steps.split('\n');
+    var html = '';
+    var num = 0;
+    for (var i = 0; i < stepLines.length; i++) {
+        var line = stepLines[i].trim();
+        if (line) {
+            num++;
+            var isRuleHeader = line.indexOf('<strong>') === 0 || line.indexOf('===') !== -1 || line.indexOf('Rule:') !== -1;
+            var isHighlight = line.indexOf('Final result') !== -1 || line.indexOf('Result:') !== -1;
+            var classes = 'step-item';
+            if (isRuleHeader) classes += ' rule-header';
+            if (isHighlight) classes += ' highlight-step';
+
+            html += '<div class="' + classes + '"><span class="step-number">' + num + '.</span><span class="step-text">' + line + '</span></div>';
+        }
+    }
+    return html;
+}
+
+function updateDesktopSidePanel(expression, result, steps) {
+    if (!desktopSideContent) return;
+    if (!expression && !result) {
+        desktopSideContent.innerHTML = '<div class="side-empty-state">' +
+            '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"/><path d="M6 6h10"/><path d="M6 10h10"/></svg>' +
+            '<p>Perform an evaluation to inspect the <strong>detailed mathematical proof</strong> and step-by-step evaluation.</p>' +
+            '</div>';
+        return;
+    }
+
+    var html = '<div class="steps-expression"><strong>Expression:</strong> ' + escapeHtml(expression) + '</div>' +
+               '<div class="steps-result-full"><span class="result-label">RESULT:</span> <span class="result-value">' + escapeHtml(result) + '</span></div>' +
+               '<div class="steps-list-full">' + formatStepsHtml(steps) + '</div>';
+    desktopSideContent.innerHTML = html;
+}
+
 function showStepsView(expression, result, steps) {
+    lastCalculatedExpression = expression;
+    lastCalculatedResult = result;
+    lastCalculatedSteps = steps;
+
     document.getElementById('stepsExpression').innerHTML = '<strong>Expression:</strong> ' + escapeHtml(expression);
     document.getElementById('stepsResultFull').innerHTML = '<span class="result-label">RESULT:</span> <span class="result-value">' + escapeHtml(result) + '</span>';
     var stepsList = document.getElementById('stepsListFull');
-    if (!steps || !steps.trim()) {
-        stepsList.innerHTML = '<div class="step-item">No detailed steps available for this expression.</div>';
-    } else {
-        var stepLines = steps.split('\n');
-        var html = '';
-        var num = 0;
-        for (var i = 0; i < stepLines.length; i++) {
-            var line = stepLines[i];
-            if (line.trim()) {
-                num++;
-                html += '<div class="step-item"><span class="step-number">' + num + '.</span> ' + escapeHtml(line) + '</div>';
-            }
-        }
-        stepsList.innerHTML = html;
+    if (stepsList) {
+        stepsList.innerHTML = formatStepsHtml(steps);
     }
-    calculatorView.style.display = 'none';
-    stepsView.style.display = 'flex';
-    fullPageView.style.display = 'none';
+
+    updateDesktopSidePanel(expression, result, steps);
+
+    // Only switch full view on mobile screens (< 900px)
+    if (window.innerWidth < 900) {
+        calculatorView.style.display = 'none';
+        stepsView.style.display = 'flex';
+        fullPageView.style.display = 'none';
+    }
 }
 
 function showFullPage(title, contentHtml) {
@@ -201,6 +326,27 @@ function showFullPage(title, contentHtml) {
     calculatorView.style.display = 'none';
     stepsView.style.display = 'none';
     fullPageView.style.display = 'flex';
+}
+
+function copyStepsToClipboard() {
+    if (!lastCalculatedSteps && !lastCalculatedExpression) {
+        showToast('No steps to copy');
+        return;
+    }
+    var fullText = 'EXPRESSION: ' + lastCalculatedExpression + '\n' +
+                   'RESULT: ' + lastCalculatedResult + '\n\n' +
+                   'STEP-BY-STEP EVALUATION:\n' +
+                   lastCalculatedSteps.replace(/<[^>]*>/g, '');
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(fullText).then(function() {
+            showToast('Steps copied to clipboard!');
+        }).catch(function() {
+            showToast('Unable to copy to clipboard');
+        });
+    } else {
+        showToast('Clipboard access not supported');
+    }
 }
 
 // ================= HISTORY =================
@@ -218,8 +364,8 @@ function saveHistory() {
 
 function addHistory(expr, result, steps, branch) {
     historyEntries.unshift({
-        expr: expr, result: result, steps: (steps || '').substring(0, 500),
-        branch: branch, date: new Date().toLocaleString()
+        expr: expr, result: result, steps: (steps || '').substring(0, 1000),
+        branch: branch, date: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     });
     if (historyEntries.length > 50) historyEntries.length = 50;
     saveHistory();
@@ -229,7 +375,7 @@ function clearHistory() { historyEntries = []; saveHistory(); }
 
 // ================= THEMES =================
 var themes = ['default', 'obsidian', 'royalblue', 'orange', 'highcontrast', 'forest', 'crimson', 'slate', 'purple', 'midnight', 'sand', 'cyan-night'];
-var themeNames = ['Default', 'Obsidian', 'Royal Blue', 'Orange', 'High Contrast', 'Forest', 'Crimson', 'Slate', 'Purple', 'Midnight', 'Sand', 'Cyan Night'];
+var themeNames = ['Default Modern', 'Obsidian Violet', 'Royal Blue', 'Deep Amber', 'High Contrast', 'Emerald Forest', 'Crimson Rose', 'Slate Steel', 'Electric Purple', 'Midnight Indigo', 'Warm Sand', 'Cyan Neon'];
 
 function applyTheme(theme) {
     document.body.className = '';
@@ -248,6 +394,7 @@ function initFont() {
     var saved = localStorage.getItem('appFont');
     document.body.style.fontFamily = saved || "'Inter', 'Segoe UI', system-ui, sans-serif";
 }
+
 function setFont(font) {
     document.body.style.fontFamily = font;
     localStorage.setItem('appFont', font);
@@ -273,7 +420,7 @@ function toggleKeyboard() {
     keyboardEnabled = !keyboardEnabled;
     localStorage.setItem('keyboardEnabled', keyboardEnabled ? 'true' : 'false');
     applyKeyboardState();
-    showToast(keyboardEnabled ? 'Keyboard enabled' : 'Keyboard disabled');
+    showToast(keyboardEnabled ? 'Hardware keyboard enabled' : 'Virtual keypad mode');
 }
 
 function initKeyboardState() {
@@ -303,8 +450,10 @@ function initPwaWelcomeModal() {
     if (!seen) {
         showPwaWelcomeModal();
     }
-    document.getElementById('pwaAgreeBtn').addEventListener('click', handlePwaWelcomeResponse);
-    document.getElementById('pwaDisagreeBtn').addEventListener('click', handlePwaWelcomeResponse);
+    var agreeBtn = document.getElementById('pwaAgreeBtn');
+    var disagreeBtn = document.getElementById('pwaDisagreeBtn');
+    if (agreeBtn) agreeBtn.addEventListener('click', handlePwaWelcomeResponse);
+    if (disagreeBtn) disagreeBtn.addEventListener('click', handlePwaWelcomeResponse);
 }
 
 // ================= BUTTON DEFINITIONS =================
@@ -354,17 +503,17 @@ var settheoryButtons = [
     'UNION', '∩', 'COMPLEMENT', '\\',
     'SUBSET', 'POWERSET', '{', '}',
     '7', '8', '9', ',',
-    '4', '5', '6',
-    '1', '2', '3',
-    '0'
+    '4', '5', '6', '∅',
+    '1', '2', '3', 'A',
+    '0', 'B', 'U', 'C'
 ];
 
 var numbertheoryButtons = [
     'gcd(', 'lcm(', 'mod(', 'prime?(',
     'factor(', '(', ')', ',',
-    '7', '8', '9',
-    '4', '5', '6',
-    '1', '2', '3',
+    '7', '8', '9', 'phi(',
+    '4', '5', '6', 'modpow(',
+    '1', '2', '3', '^',
     '0', '.'
 ];
 
@@ -372,7 +521,7 @@ var conversionButtons = [
     'DEC → BINARY', 'BIN → DECIMAL',
     'DEC → HEX', 'HEX → DECIMAL',
     'DEC → OCT', 'OCT → DECIMAL',
-    'BIN → HEX', 'CLEAR',
+    'BIN → HEX', 'HEX → BINARY',
     '7', '8', '9', 'A',
     '4', '5', '6', 'B',
     '1', '2', '3', 'C',
@@ -380,20 +529,22 @@ var conversionButtons = [
 ];
 
 var matrixButtons = [
-    'det2x2(', 'add2x2(',
-    'mul2x2(', ',', '(', ')',
-    '7', '8', '9',
-    '4', '5', '6',
-    '1', '2', '3',
-    '0'
+    'det2x2(', 'inv2x2(',
+    'add2x2(', 'mul2x2(',
+    'trace2x2(', 'trans2x2(',
+    '7', '8', '9', ',',
+    '4', '5', '6', '(',
+    '1', '2', '3', ')',
+    '0', '-'
 ];
 
 var complexButtons = [
     're(', 'im(', 'conj(', 'arg(',
+    'abs(', 'polar(', '(', ')',
     '7', '8', '9', 'i',
-    '4', '5', '6', 'abs(',
-    '1', '2', '3', '(',
-    '0', '.', '+', '-', '*', '/', ')'
+    '4', '5', '6', '+',
+    '1', '2', '3', '-',
+    '0', '.', '*', '/'
 ];
 
 function getFullButtons(branch) {
@@ -414,43 +565,6 @@ function getFullButtons(branch) {
 function isNumberButton(label) { return /^[0-9A-F.]$/.test(label); }
 function isEqualsButton(label) { return label === '=='; }
 
-// ================= CARET-AWARE INPUT =================
-function insertAtCaret(text) {
-    var el = exprInput;
-    var start = el.selectionStart != null ? el.selectionStart : el.value.length;
-    var end = el.selectionEnd != null ? el.selectionEnd : el.value.length;
-    var before = el.value.substring(0, start);
-    var after = el.value.substring(end);
-    el.value = before + text + after;
-    var newPos = start + text.length;
-    el.focus();
-    el.setSelectionRange(newPos, newPos);
-}
-
-function moveCaret(delta) {
-    var el = exprInput;
-    var pos = (el.selectionStart != null ? el.selectionStart : el.value.length) + delta;
-    pos = Math.max(0, Math.min(el.value.length, pos));
-    el.focus();
-    el.setSelectionRange(pos, pos);
-}
-
-function backspaceAtCaret() {
-    var el = exprInput;
-    var start = el.selectionStart != null ? el.selectionStart : el.value.length;
-    var end = el.selectionEnd != null ? el.selectionEnd : el.value.length;
-    if (start === end) {
-        if (start === 0) return;
-        el.value = el.value.substring(0, start - 1) + el.value.substring(end);
-        el.focus();
-        el.setSelectionRange(start - 1, start - 1);
-    } else {
-        el.value = el.value.substring(0, start) + el.value.substring(end);
-        el.focus();
-        el.setSelectionRange(start, start);
-    }
-}
-
 function renderButtons() {
     var btns = getFullButtons(currentBranch);
     if (!dynamicDiv) return;
@@ -468,30 +582,48 @@ function renderButtons() {
         btn.type = 'button';
 
         (function(btnLabel) {
-            if (btnLabel === 'CLEAR') {
-                btn.onclick = function() {
-                    buzz();
-                    exprInput.value = '';
-                    resultDisplay.textContent = '0';
-                    if (fallbackMessage) fallbackMessage.style.display = 'none';
+            btn.onclick = function() {
+                buzz();
+                if (currentBranch === 'conversion' && btnLabel.indexOf('→') !== -1) {
+                    exprInput.value = btnLabel + ' ';
                     exprInput.focus();
-                };
-            } else {
-                btn.onclick = function() {
-                    buzz();
-                    if (currentBranch === 'conversion' && btnLabel.indexOf('→') !== -1) {
-                        exprInput.value = btnLabel + ' ';
-                        exprInput.focus();
-                        exprInput.setSelectionRange(exprInput.value.length, exprInput.value.length);
-                    } else {
-                        insertAtCaret(btnLabel);
-                    }
-                };
-            }
+                    exprInput.setSelectionRange(exprInput.value.length, exprInput.value.length);
+                } else {
+                    insertAtCaret(btnLabel);
+                }
+            };
         })(label);
 
         dynamicDiv.appendChild(btn);
     }
+}
+
+function switchBranch(branch) {
+    currentBranch = branch;
+    updateBranchIndicator();
+    renderButtons();
+
+    // Update drawer buttons
+    var allDrawerBtns = document.querySelectorAll('.branch-drawer-btn');
+    for (var i = 0; i < allDrawerBtns.length; i++) {
+        if (allDrawerBtns[i].getAttribute('data-branch') === branch) {
+            allDrawerBtns[i].classList.add('active');
+        } else {
+            allDrawerBtns[i].classList.remove('active');
+        }
+    }
+
+    // Update desktop tabs
+    var allTabs = document.querySelectorAll('.mode-tab-btn');
+    for (var j = 0; j < allTabs.length; j++) {
+        if (allTabs[j].getAttribute('data-branch') === branch) {
+            allTabs[j].classList.add('active');
+        } else {
+            allTabs[j].classList.remove('active');
+        }
+    }
+
+    if (fallbackMessage) fallbackMessage.style.display = 'none';
 }
 
 function updateBranchIndicator() {
@@ -556,18 +688,44 @@ function runCompiled(processed) {
     return fn(fact, xorFn, impliesFn, equivFn);
 }
 
-// ================= IMPROVED STEP GENERATOR =================
+// ================= STEP GENERATOR FOR ARITHMETIC & BITWISE =================
 function generateSteps(expr) {
     var steps = [];
-    steps.push('Original expression: ' + expr);
+    steps.push('<strong>Input Expression:</strong> ' + expr);
 
     var clean = preprocessExpression(expr);
-    if (clean !== expr) steps.push('After symbol/constant substitution: ' + clean);
+    if (clean !== expr) steps.push('Substitute standard notation: ' + clean);
+
+    // Check for bitwise operations
+    var bitwiseMatch = clean.match(/(-?\d+)\s*(&|\||\^|<<|>>)\s*(-?\d+)/);
+    if (bitwiseMatch) {
+        var op1 = parseInt(bitwiseMatch[1], 10);
+        var op = bitwiseMatch[2];
+        var op2 = parseInt(bitwiseMatch[3], 10);
+        var bRes;
+        if (op === '&') bRes = op1 & op2;
+        else if (op === '|') bRes = op1 | op2;
+        else if (op === '^') bRes = op1 ^ op2;
+        else if (op === '<<') bRes = op1 << op2;
+        else if (op === '>>') bRes = op1 >> op2;
+
+        steps.push('<strong>Bitwise Operation Analysis (' + op1 + ' ' + op + ' ' + op2 + '):</strong>');
+        var bin1 = (op1 >>> 0).toString(2).padStart(8, '0');
+        var bin2 = (op2 >>> 0).toString(2).padStart(8, '0');
+        var binRes = (bRes >>> 0).toString(2).padStart(8, '0');
+
+        steps.push('Operand 1 (Binary): <code>' + bin1 + '</code> (' + op1 + ')');
+        steps.push('Operand 2 (Binary): <code>' + bin2 + '</code> (' + op2 + ')');
+        if (op === '&') steps.push('Bitwise AND: Each bit position is 1 if and only if both bits are 1.');
+        else if (op === '|') steps.push('Bitwise OR: Each bit position is 1 if at least one bit is 1.');
+        else if (op === '^') steps.push('Bitwise XOR: Each bit position is 1 if exactly one bit is 1.');
+        else if (op === '<<') steps.push('Left Shift: Shift bits left by ' + op2 + ' positions (multiplies by 2<sup>' + op2 + '</sup>).');
+        else if (op === '>>') steps.push('Right Shift: Shift bits right by ' + op2 + ' positions (integer division by 2<sup>' + op2 + '</sup>).');
+
+        steps.push('Result (Binary): <code>' + binRes + '</code> = <strong>' + bRes + '</strong> (Decimal)');
+    }
 
     var processed = compileToJS(expr);
-    if (processed !== clean) steps.push('Compiled form: ' + processed);
-
-    var reductionStart = steps.length;
     var working = processed;
     var guard = 0;
     var callRegex = /([A-Za-z_][A-Za-z0-9_.]*)?\(([^()]*)\)/;
@@ -586,18 +744,14 @@ function generateSteps(expr) {
         }
         var displayBefore = fnName ? (fnName + '(' + inner + ')') : ('(' + inner + ')');
         working = working.slice(0, m.index) + value + working.slice(m.index + m[0].length);
-        steps.push('Evaluate ' + displayBefore + ' = ' + value + '   →   ' + working);
-    }
-
-    if (steps.length === reductionStart) {
-        steps.push('No parentheses or function calls to reduce — evaluating directly using standard order of operations (^, then × ÷, then + −, left to right).');
+        steps.push('Evaluate sub-expression: ' + displayBefore + ' = ' + value + ' → ' + working);
     }
 
     try {
         var result = runCompiled(processed);
-        steps.push('Final result: ' + result);
+        steps.push('<strong>Final Evaluated Result:</strong> ' + result);
     } catch (e) {
-        steps.push('Error: ' + e.message);
+        steps.push('Error during evaluation: ' + e.message);
     }
 
     return steps.join('\n');
@@ -606,172 +760,228 @@ function generateSteps(expr) {
 // ================= EVALUATION ENGINE =================
 function evaluateUniversal(expr) {
     try {
-        if (!expr.trim()) return { result: '0', steps: 'Empty expression' };
+        if (!expr.trim()) return { result: '0', steps: 'Empty expression entered.' };
         var processed = compileToJS(expr);
         var result = runCompiled(processed);
         var steps = generateSteps(expr);
         return { result: result, steps: steps };
     } catch (e) {
-        return { result: 'Error', steps: 'Invalid expression: ' + e.message };
+        return { result: 'Error', steps: 'Invalid mathematical expression: ' + e.message };
     }
 }
 
 function evaluateArithmetic(expr) { return evaluateUniversal(expr); }
 
-// ================= LOGIC & BOOLEAN WITH STEPS =================
+// ================= LOGIC & BOOLEAN WITH TRUTH TABLES =================
 function evaluateLogic(expr) {
     var steps = [];
     var raw = expr.trim();
-    if (!raw) return { result: 'Error', steps: 'Empty expression' };
+    if (!raw) return { result: 'Error', steps: 'Empty logical expression.' };
 
-    steps.push('Evaluating logical expression: ' + raw);
-    steps.push('Substituting symbols...');
-
-    // Preprocess and compile
+    steps.push('<strong>Evaluating Propositional Logic:</strong> ' + raw);
     var clean = preprocessExpression(raw);
-    if (clean !== raw) steps.push('After symbol substitution: ' + clean);
-
     var processed = compileToJS(raw);
-    steps.push('Compiled form: ' + processed);
 
-    // Tokenize for step-by-step logical evaluation
-    var tokens = processed.split(/(\s+)/).filter(function(t) { return t.trim().length > 0; });
-    var logicalSteps = [];
-    var evalStack = [];
-    var stepNum = 0;
-
-    // Evaluate step by step through the expression
     var result;
     try {
         result = runCompiled(processed);
-        steps.push('Evaluating logical operations in order of precedence: NOT, AND, OR, then XOR, IMPLIES, EQUIV...');
-        steps.push('Expression evaluates to: ' + result + ' (true=' + result + ', false=' + !result + ')');
+        steps.push('Evaluates to Boolean: <strong>' + (result ? 'TRUE (1)' : 'FALSE (0)') + '</strong>');
 
-        // Add truth table style explanation for simple expressions
-        if (raw.indexOf('AND') !== -1 || raw.indexOf('&&') !== -1) {
-            steps.push('AND (∧) is true only when BOTH operands are true.');
-            steps.push('Truth table: true ∧ true = true, all other combinations = false.');
+        // Provide truth logic explanation
+        if (/AND|&&|∧/.test(raw)) {
+            steps.push('<strong>AND (Conjunction ∧):</strong> True only when both operands evaluate to TRUE.');
+            steps.push('Truth values: T ∧ T = T, T ∧ F = F, F ∧ T = F, F ∧ F = F');
         }
-        if (raw.indexOf('OR') !== -1 || raw.indexOf('||') !== -1) {
-            steps.push('OR (∨) is true when AT LEAST ONE operand is true.');
-            steps.push('Truth table: false ∨ false = false, all other combinations = true.');
+        if (/OR|\|\||∨/.test(raw)) {
+            steps.push('<strong>OR (Disjunction ∨):</strong> True when at least one operand evaluates to TRUE.');
+            steps.push('Truth values: T ∨ T = T, T ∨ F = T, F ∨ T = T, F ∨ F = F');
         }
-        if (raw.indexOf('NOT') !== -1 || raw.indexOf('!') !== -1) {
-            steps.push('NOT (¬) flips the truth value: true becomes false, false becomes true.');
+        if (/NOT|¬|!/.test(raw)) {
+            steps.push('<strong>NOT (Negation ¬):</strong> Flips truth value (¬T = F, ¬F = T).');
         }
-        if (raw.indexOf('XOR') !== -1) {
-            steps.push('XOR (⊕) is true when EXACTLY ONE operand is true (true ⊕ false = true, false ⊕ true = true, true ⊕ true = false).');
+        if (/XOR|⊕/.test(raw)) {
+            steps.push('<strong>XOR (Exclusive OR ⊕):</strong> True if and only if operands have different truth values (T ⊕ F = T, T ⊕ T = F).');
         }
-        if (raw.indexOf('IMPLIES') !== -1) {
-            steps.push('IMPLIES (→) is false ONLY when the first operand is true and the second is false.');
-            steps.push('Truth table: true → false = false, all other combinations = true.');
+        if (/IMPLIES|→/.test(raw)) {
+            steps.push('<strong>IMPLIES (Conditional →):</strong> False only when hypothesis is TRUE and conclusion is FALSE (T → F = F; all others T).');
         }
-        if (raw.indexOf('EQUIV') !== -1) {
-            steps.push('EQUIV (↔) is true when BOTH operands have the SAME truth value.');
-            steps.push('Truth table: true ↔ true = true, false ↔ false = true, true ↔ false = false.');
+        if (/EQUIV|↔/.test(raw)) {
+            steps.push('<strong>EQUIV (Biconditional ↔):</strong> True when both propositions have identical truth values (T ↔ T = T, F ↔ F = T).');
         }
 
-        steps.push('Final result: ' + result);
+        return { result: result ? 'TRUE' : 'FALSE', steps: steps.join('\n') };
     } catch (e) {
-        return { result: 'Error', steps: 'Invalid logical expression: ' + e.message };
+        return { result: 'Error', steps: 'Invalid Boolean expression: ' + e.message };
     }
-
-    return { result: result, steps: steps.join('\n') };
 }
 
-// ================= SET THEORY WITH STEPS =================
+// ================= SET THEORY WITH ELEMENT-WISE COMPUTATION =================
+function parseSet(str) {
+    str = str.replace(/∅/g, '').trim();
+    var match = str.match(/\{([^}]*)\}/);
+    if (!match) return null;
+    var inner = match[1].trim();
+    if (!inner) return [];
+    return inner.split(',').map(function(s) { return s.trim(); }).filter(function(s) { return s.length > 0; });
+}
+
+function formatSet(arr) {
+    if (!arr || arr.length === 0) return '∅';
+    var unique = [];
+    for (var i = 0; i < arr.length; i++) {
+        if (unique.indexOf(arr[i]) === -1) unique.push(arr[i]);
+    }
+    return '{' + unique.join(', ') + '}';
+}
+
 function evaluateSetTheory(expr) {
-    var u = expr.toUpperCase().trim();
+    var raw = expr.trim();
     var steps = [];
+    if (!raw) return { result: 'Error', steps: 'Empty set expression.' };
 
-    if (!u) return { result: 'Error', steps: 'Empty expression' };
+    steps.push('<strong>Set Theory Operation:</strong> ' + raw);
 
-    steps.push('Set theory expression: ' + u);
+    // Look for explicit sets {1,2,3} OP {2,3,4}
+    var setMatches = raw.match(/\{[^}]*\}|∅/g);
+    if (setMatches && setMatches.length >= 2) {
+        var setA = parseSet(setMatches[0]) || [];
+        var setB = parseSet(setMatches[1]) || [];
 
-    if (u.indexOf('UNION') !== -1 || u.indexOf('∪') !== -1) {
-        steps.push('UNION (∪): The set of every element that appears in A, in B, or in both.');
-        steps.push('Duplicates are only counted once.');
-        steps.push('Example: {1,2,3} ∪ {2,3,4} = {1,2,3,4}');
-        return { result: 'A ∪ B', steps: steps.join('\n') };
-    }
-    if (u.indexOf('∩') !== -1) {
-        steps.push('INTERSECTION (∩): Only the elements that appear in BOTH A and B at the same time.');
-        steps.push('Example: {1,2,3} ∩ {2,3,4} = {2,3}');
-        return { result: 'A ∩ B', steps: steps.join('\n') };
-    }
-    if (u.indexOf('COMPLEMENT') !== -1) {
-        steps.push("COMPLEMENT (A'): Every element in the universal set U that is NOT in A.");
-        steps.push("Example: If U = {1,2,3,4,5} and A = {1,2}, then A' = {3,4,5}");
-        return { result: "A'", steps: steps.join('\n') };
-    }
-    if (u.indexOf('\\') !== -1) {
-        steps.push('DIFFERENCE (A \\ B): Elements that are in A but removed if they also appear in B.');
-        steps.push('Example: {1,2,3} \\ {2,3,4} = {1}');
-        return { result: 'A \\ B', steps: steps.join('\n') };
-    }
-    if (u.indexOf('SUBSET') !== -1) {
-        steps.push('SUBSET (A ⊆ B): True when every single element of A can also be found in B.');
-        steps.push('Example: {1,2} ⊆ {1,2,3} = true, {1,2,3} ⊆ {1,2} = false');
-        return { result: 'A ⊆ B', steps: steps.join('\n') };
-    }
-    if (u.indexOf('POWERSET') !== -1) {
-        steps.push('POWERSET (P(A)): The set of ALL possible subsets of A, including the empty set ∅ and A itself.');
-        steps.push('If A has n elements, P(A) has exactly 2^n subsets.');
-        steps.push('Example: A = {1,2}, P(A) = {∅, {1}, {2}, {1,2}}');
-        return { result: 'P(A)', steps: steps.join('\n') };
+        if (raw.indexOf('UNION') !== -1 || raw.indexOf('∪') !== -1) {
+            var union = [].concat(setA);
+            for (var i = 0; i < setB.length; i++) {
+                if (union.indexOf(setB[i]) === -1) union.push(setB[i]);
+            }
+            steps.push('Set A = ' + formatSet(setA));
+            steps.push('Set B = ' + formatSet(setB));
+            steps.push('<strong>Union (A ∪ B):</strong> All elements from Set A combined with all elements from Set B, removing duplicate entries.');
+            steps.push('A ∪ B = <strong>' + formatSet(union) + '</strong> (Cardinality |A ∪ B| = ' + union.length + ')');
+            return { result: formatSet(union), steps: steps.join('\n') };
+        }
+
+        if (raw.indexOf('∩') !== -1 || raw.indexOf('INTERSECT') !== -1) {
+            var intersect = [];
+            for (var j = 0; j < setA.length; j++) {
+                if (setB.indexOf(setA[j]) !== -1 && intersect.indexOf(setA[j]) === -1) {
+                    intersect.push(setA[j]);
+                }
+            }
+            steps.push('Set A = ' + formatSet(setA));
+            steps.push('Set B = ' + formatSet(setB));
+            steps.push('<strong>Intersection (A ∩ B):</strong> Elements that belong to BOTH Set A and Set B simultaneously.');
+            steps.push('A ∩ B = <strong>' + formatSet(intersect) + '</strong> (Cardinality |A ∩ B| = ' + intersect.length + ')');
+            return { result: formatSet(intersect), steps: steps.join('\n') };
+        }
+
+        if (raw.indexOf('\\') !== -1 || raw.indexOf('DIFF') !== -1) {
+            var diff = [];
+            for (var k = 0; k < setA.length; k++) {
+                if (setB.indexOf(setA[k]) === -1 && diff.indexOf(setA[k]) === -1) {
+                    diff.push(setA[k]);
+                }
+            }
+            steps.push('Set A = ' + formatSet(setA));
+            steps.push('Set B = ' + formatSet(setB));
+            steps.push('<strong>Relative Complement / Difference (A \\ B):</strong> Elements in A that are NOT in B.');
+            steps.push('A \\ B = <strong>' + formatSet(diff) + '</strong>');
+            return { result: formatSet(diff), steps: steps.join('\n') };
+        }
+
+        if (raw.indexOf('SUBSET') !== -1 || raw.indexOf('⊆') !== -1) {
+            var isSub = true;
+            for (var m = 0; m < setA.length; m++) {
+                if (setB.indexOf(setA[m]) === -1) { isSub = false; break; }
+            }
+            steps.push('Set A = ' + formatSet(setA));
+            steps.push('Set B = ' + formatSet(setB));
+            steps.push('<strong>Subset Test (A ⊆ B):</strong> True if every element of A is also found in B.');
+            steps.push('A ⊆ B = <strong>' + (isSub ? 'TRUE' : 'FALSE') + '</strong>');
+            return { result: isSub ? 'TRUE' : 'FALSE', steps: steps.join('\n') };
+        }
     }
 
-    return { result: 'Error', steps: 'No set operation detected. Try UNION, ∩, COMPLEMENT, \\, SUBSET, or POWERSET.' };
+    // Powerset operation
+    if (raw.indexOf('POWERSET') !== -1 || raw.indexOf('P(') !== -1) {
+        var pMatch = raw.match(/\{[^}]*\}/);
+        var targetSet = pMatch ? (parseSet(pMatch[0]) || []) : ['1', '2'];
+        var n = targetSet.length;
+        var totalSubsets = Math.pow(2, n);
+        var subsets = [];
+        for (var pi = 0; pi < totalSubsets; pi++) {
+            var subset = [];
+            for (var pj = 0; pj < n; pj++) {
+                if ((pi & (1 << pj)) !== 0) subset.push(targetSet[pj]);
+            }
+            subsets.push(formatSet(subset));
+        }
+        steps.push('Set A = ' + formatSet(targetSet) + ' (n = ' + n + ' elements)');
+        steps.push('<strong>Powerset Formula:</strong> |P(A)| = 2<sup>n</sup> = 2<sup>' + n + '</sup> = <strong>' + totalSubsets + ' subsets</strong>');
+        steps.push('P(A) = {' + subsets.join(', ') + '}');
+        return { result: '{' + subsets.join(', ') + '}', steps: steps.join('\n') };
+    }
+
+    // Symbolic descriptions fallback
+    steps.push('<strong>Set Operator Definitions:</strong>');
+    steps.push('• <strong>UNION (A ∪ B):</strong> Elements in A or B or both (e.g. {1,2} ∪ {2,3} = {1,2,3})');
+    steps.push('• <strong>INTERSECTION (A ∩ B):</strong> Elements present in both (e.g. {1,2} ∩ {2,3} = {2})');
+    steps.push('• <strong>DIFFERENCE (A \\ B):</strong> Elements in A but not in B (e.g. {1,2,3} \\ {2} = {1,3})');
+    steps.push('• <strong>POWERSET (P(A)):</strong> Set of all 2<sup>n</sup> subsets including ∅');
+    return { result: 'A ∪ B', steps: steps.join('\n') };
 }
 
-// ================= COMBINATORICS WITH STEPS =================
+// ================= COMBINATORICS WITH PROOFS =================
 function evaluateCombinatorics(expr) {
     var u = expr.toUpperCase();
     var m = u.match(/NCR\s*\(?\s*(\d+)\s*,\s*(\d+)/i);
     if (m) {
-        var n = parseInt(m[1]), r = parseInt(m[2]);
-        if (r > n) return { result: 'Error', steps: 'Error: r cannot be greater than n.' };
+        var n = parseInt(m[1], 10), r = parseInt(m[2], 10);
+        if (r > n) return { result: 'Error', steps: 'Error: r (' + r + ') cannot exceed n (' + n + ').' };
         var fn = fact(n), fr = fact(r), fnr = fact(n - r);
         var res = fn / (fr * fnr);
         var steps = [
-            'Combination formula: C(n, r) = n! / (r! × (n − r)!)',
-            'n = ' + n + ', r = ' + r,
-            n + '! = ' + fn,
-            r + '! = ' + fr,
-            '(' + n + ' − ' + r + ')! = ' + (n - r) + '! = ' + fnr,
-            'C(' + n + ',' + r + ') = ' + fn + ' / (' + fr + ' × ' + fnr + ')',
-            '= ' + fn + ' / ' + (fr * fnr) + ' = ' + res
+            '<strong>Combination Formula:</strong> C(n, r) = <sup>n!</sup> / <sub>(r! × (n − r)!)</sub>',
+            'Parameters: n = ' + n + ' (total items), r = ' + r + ' (items chosen without order)',
+            'Step 1: ' + n + '! = ' + fn,
+            'Step 2: ' + r + '! = ' + fr,
+            'Step 3: (' + n + ' − ' + r + ')! = ' + (n - r) + '! = ' + fnr,
+            'Step 4: C(' + n + ', ' + r + ') = ' + fn + ' / (' + fr + ' × ' + fnr + ')',
+            'Step 5: = ' + fn + ' / ' + (fr * fnr) + ' = <strong>' + res + '</strong>',
+            '<em>Interpretation: There are ' + res + ' distinct ways to choose ' + r + ' items from ' + n + ' items.</em>'
         ];
         return { result: res, steps: steps.join('\n') };
     }
+
     m = u.match(/NPR\s*\(?\s*(\d+)\s*,\s*(\d+)/i);
     if (m) {
-        var n2 = parseInt(m[1]), r2 = parseInt(m[2]);
-        if (r2 > n2) return { result: 'Error', steps: 'Error: r cannot be greater than n.' };
+        var n2 = parseInt(m[1], 10), r2 = parseInt(m[2], 10);
+        if (r2 > n2) return { result: 'Error', steps: 'Error: r (' + r2 + ') cannot exceed n (' + n2 + ').' };
         var fn2 = fact(n2), fnr2 = fact(n2 - r2);
         var res2 = fn2 / fnr2;
         var steps2 = [
-            'Permutation formula: P(n, r) = n! / (n − r)!',
-            'n = ' + n2 + ', r = ' + r2,
-            n2 + '! = ' + fn2,
-            '(' + n2 + ' − ' + r2 + ')! = ' + (n2 - r2) + '! = ' + fnr2,
-            'P(' + n2 + ',' + r2 + ') = ' + fn2 + ' / ' + fnr2 + ' = ' + res2
+            '<strong>Permutation Formula:</strong> P(n, r) = <sup>n!</sup> / <sub>(n − r)!</sub>',
+            'Parameters: n = ' + n2 + ' (total items), r = ' + r2 + ' (items arranged with order)',
+            'Step 1: ' + n2 + '! = ' + fn2,
+            'Step 2: (' + n2 + ' − ' + r2 + ')! = ' + (n2 - r2) + '! = ' + fnr2,
+            'Step 3: P(' + n2 + ', ' + r2 + ') = ' + fn2 + ' / ' + fnr2 + ' = <strong>' + res2 + '</strong>',
+            '<em>Interpretation: There are ' + res2 + ' distinct ordered arrangements of ' + r2 + ' items from ' + n2 + ' items.</em>'
         ];
         return { result: res2, steps: steps2.join('\n') };
     }
+
     m = u.match(/(\d+)!/);
     if (m) {
-        var n3 = parseInt(m[1]);
+        var n3 = parseInt(m[1], 10);
         var res3 = fact(n3);
         var chain = [];
         for (var i = n3; i >= 1; i--) chain.push(i);
         var steps3 = [
-            n3 + '! means multiplying every whole number from ' + n3 + ' down to 1',
-            n3 + '! = ' + chain.join(' × ') + ' = ' + res3
+            '<strong>Factorial Definition:</strong> ' + n3 + '! is the product of all positive integers ≤ ' + n3,
+            n3 + '! = ' + chain.join(' × ') + ' = <strong>' + res3 + '</strong>'
         ];
         return { result: res3, steps: steps3.join('\n') };
     }
-    return { result: 'Error', steps: 'No combinatorics operation detected. Try nCr(5,2), nPr(5,2), or 5!' };
+
+    return evaluateUniversal(expr);
 }
 
 // ================= NUMBER THEORY =================
@@ -780,71 +990,108 @@ function evaluateNumberTheory(expr) {
 
     var m = u.match(/gcd\s*\(?\s*(\d+)\s*,\s*(\d+)/);
     if (m) {
-        var g = gcdWithSteps(parseInt(m[1]), parseInt(m[2]));
-        return { result: g.result, steps: g.steps.join('\n') };
+        var g = extendedGcdWithSteps(parseInt(m[1], 10), parseInt(m[2], 10));
+        return { result: g.gcd, steps: g.steps.join('\n') };
     }
 
     m = u.match(/lcm\s*\(?\s*(\d+)\s*,\s*(\d+)/);
     if (m) {
-        var a2 = parseInt(m[1]), b2 = parseInt(m[2]);
-        var gStep = gcdWithSteps(a2, b2);
-        var l = (a2 * b2) / gStep.result;
+        var a2 = parseInt(m[1], 10), b2 = parseInt(m[2], 10);
+        var gStep = extendedGcdWithSteps(a2, b2);
+        var l = (a2 * b2) / gStep.gcd;
         var steps = gStep.steps.concat([
-            'LCM formula: lcm(a, b) = (a × b) / gcd(a, b)',
-            'lcm(' + a2 + ',' + b2 + ') = (' + a2 + ' × ' + b2 + ') / ' + gStep.result + ' = ' + (a2 * b2) + ' / ' + gStep.result + ' = ' + l
+            '<strong>LCM Formula:</strong> lcm(a, b) = (|a × b|) / gcd(a, b)',
+            'lcm(' + a2 + ', ' + b2 + ') = (' + a2 + ' × ' + b2 + ') / ' + gStep.gcd + ' = ' + (a2 * b2) + ' / ' + gStep.gcd + ' = <strong>' + l + '</strong>'
         ]);
         return { result: l, steps: steps.join('\n') };
     }
 
+    m = u.match(/modpow\s*\(?\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
+    if (m) {
+        var base = parseInt(m[1], 10), exp = parseInt(m[2], 10), modVal = parseInt(m[3], 10);
+        if (modVal === 0) return { result: 'Error', steps: 'Error: Modulo cannot be 0.' };
+        var mpSteps = ['<strong>Modular Exponentiation (' + base + '<sup>' + exp + '</sup> mod ' + modVal + ') via Repeated Squaring:</strong>'];
+        var curBase = base % modVal;
+        var curExp = exp;
+        var mpRes = 1;
+        while (curExp > 0) {
+            if (curExp % 2 === 1) {
+                mpSteps.push('Exp odd: res = (' + mpRes + ' × ' + curBase + ') mod ' + modVal + ' = ' + ((mpRes * curBase) % modVal));
+                mpRes = (mpRes * curBase) % modVal;
+            }
+            curBase = (curBase * curBase) % modVal;
+            curExp = Math.floor(curExp / 2);
+        }
+        mpSteps.push('Final Result = <strong>' + mpRes + '</strong>');
+        return { result: mpRes, steps: mpSteps.join('\n') };
+    }
+
+    m = u.match(/phi\s*\(?\s*(\d+)/);
+    if (m) {
+        var pn = parseInt(m[1], 10);
+        var phiSteps = ['<strong>Euler\'s Totient Function φ(' + pn + '):</strong>'];
+        phiSteps.push('φ(n) counts integers k in 1 ≤ k ≤ n such that gcd(k, n) = 1.');
+        var count = 0;
+        var coprimes = [];
+        for (var k = 1; k <= pn; k++) {
+            if (gcd(k, pn) === 1) {
+                count++;
+                if (coprimes.length < 15) coprimes.push(k);
+            }
+        }
+        phiSteps.push('Coprimes with ' + pn + ': ' + coprimes.join(', ') + (count > 15 ? ' ...' : ''));
+        phiSteps.push('φ(' + pn + ') = <strong>' + count + '</strong>');
+        return { result: count, steps: phiSteps.join('\n') };
+    }
+
     m = u.match(/mod\s*\(?\s*(\d+)\s*,\s*(\d+)/);
     if (m) {
-        var md = parseInt(m[1]), dv = parseInt(m[2]);
+        var md = parseInt(m[1], 10), dv = parseInt(m[2], 10);
         if (dv === 0) return { result: 'Error', steps: 'Error: Division by zero in mod operation.' };
         var q = Math.floor(md / dv);
         var mm = md - q * dv;
         var steps4 = [
-            md + ' ÷ ' + dv + ' = ' + q + ' remainder ' + mm,
-            'So ' + md + ' mod ' + dv + ' = ' + mm
+            '<strong>Modulo Definition (Dividend mod Divisor):</strong>',
+            md + ' ÷ ' + dv + ' = ' + q + ' with remainder <strong>' + mm + '</strong>',
+            'Formula: ' + md + ' = (' + q + ' × ' + dv + ') + ' + mm,
+            'So ' + md + ' mod ' + dv + ' = <strong>' + mm + '</strong>'
         ];
         return { result: mm, steps: steps4.join('\n') };
     }
 
     m = u.match(/prime\?\s*\(?\s*(\d+)/);
     if (m) {
-        var n = parseInt(m[1]);
-        var steps5 = [];
-        if (n < 2) {
-            steps5.push(n + ' is less than 2, so by definition it is not prime.');
-            return { result: false, steps: steps5.join('\n') };
+        var numP = parseInt(m[1], 10);
+        var steps5 = ['<strong>Primality Test for ' + numP + ':</strong>'];
+        if (numP < 2) {
+            steps5.push(numP + ' is less than 2, therefore it is NOT prime.');
+            return { result: 'FALSE', steps: steps5.join('\n') };
         }
         var isPrime = true;
-        var limit = Math.floor(Math.sqrt(n));
-        steps5.push('Test divisibility of ' + n + ' by every whole number from 2 up to √' + n + ' ≈ ' + limit + ':');
-        var tested = 0;
-        for (var i = 2; i <= limit; i++) {
-            tested++;
-            if (n % i === 0) {
-                steps5.push(n + ' ÷ ' + i + ' = ' + (n / i) + ' exactly, so ' + n + ' has a divisor other than 1 and itself.');
+        var limit = Math.floor(Math.sqrt(numP));
+        steps5.push('Trial division threshold: √' + numP + ' ≈ ' + limit);
+        for (var di = 2; di <= limit; di++) {
+            if (numP % di === 0) {
+                steps5.push('Divisible by ' + di + ' (' + numP + ' ÷ ' + di + ' = ' + (numP / di) + ').');
                 isPrime = false;
                 break;
-            } else if (tested <= 12) {
-                steps5.push(n + ' ÷ ' + i + ' = ' + (n / i).toFixed(3) + ' → not a whole number, so ' + i + ' does not divide it.');
-            } else if (tested === 13) {
-                steps5.push('… continuing the same check for the remaining values up to ' + limit + ' …');
             }
         }
-        if (isPrime) steps5.push('No divisor was found, so ' + n + ' is prime.');
-        else steps5.push('Since a divisor was found, ' + n + ' is not prime.');
-        return { result: isPrime, steps: steps5.join('\n') };
+        if (isPrime) {
+            steps5.push('No integer factors found between 2 and ' + limit + '. ' + numP + ' is <strong>PRIME</strong>.');
+        } else {
+            steps5.push('Since a non-trivial factor was discovered, ' + numP + ' is <strong>COMPOSITE</strong>.');
+        }
+        return { result: isPrime ? 'TRUE' : 'FALSE', steps: steps5.join('\n') };
     }
 
     m = u.match(/factor\s*\(?\s*(\d+)/);
     if (m) {
-        var num = parseInt(m[1]);
-        if (num < 2) return { result: 'Error', steps: 'Number must be greater than 1 for factorization.' };
+        var numF = parseInt(m[1], 10);
+        if (numF < 2) return { result: 'Error', steps: 'Number must be ≥ 2 for prime factorization.' };
         var factors = [];
-        var steps6 = ['Repeatedly dividing ' + num + ' by the smallest possible prime factor:'];
-        var d = 2, x = num;
+        var steps6 = ['<strong>Prime Factorization of ' + numF + ':</strong>'];
+        var d = 2, x = numF;
         while (d * d <= x) {
             while (x % d === 0) {
                 steps6.push(x + ' ÷ ' + d + ' = ' + (x / d));
@@ -855,18 +1102,29 @@ function evaluateNumberTheory(expr) {
         }
         if (x > 1) {
             factors.push(x);
-            steps6.push(x + ' is prime — no further division possible.');
+            steps6.push(x + ' is prime (final factor).');
         }
-        steps6.push(num + ' = ' + factors.join(' × '));
+
+        // Count factor powers
+        var counts = {};
+        for (var fi = 0; fi < factors.length; fi++) {
+            counts[factors[fi]] = (counts[factors[fi]] || 0) + 1;
+        }
+        var powerForm = Object.keys(counts).map(function(k) {
+            return counts[k] > 1 ? (k + '<sup>' + counts[k] + '</sup>') : k;
+        }).join(' × ');
+
+        steps6.push('Prime factors: ' + factors.join(' × '));
+        steps6.push('Canonical Exponential Form: <strong>' + powerForm + '</strong>');
         return { result: factors.join(' × '), steps: steps6.join('\n') };
     }
 
-    return { result: 'Error', steps: 'No number theory operation detected. Try gcd(12,8), lcm(12,8), mod(10,3), prime?(7), or factor(60).' };
+    return evaluateUniversal(expr);
 }
 
 // ================= CONVERSION =================
 function evaluateConversion(expr) {
-    var m = expr.match(/(DEC → BINARY|BIN → DECIMAL|DEC → HEX|HEX → DECIMAL|DEC → OCT|OCT → DECIMAL|BIN → HEX)\s+(\S+)/i);
+    var m = expr.match(/(DEC → BINARY|BIN → DECIMAL|DEC → HEX|HEX → DECIMAL|DEC → OCT|OCT → DECIMAL|BIN → HEX|HEX → BINARY)\s+(\S+)/i);
     if (!m) return { result: 'Error', steps: 'Format: DEC → BINARY 255 (tap a conversion button, then enter the value)' };
     var type = m[1].toUpperCase(), val = m[2];
 
@@ -898,46 +1156,78 @@ function evaluateConversion(expr) {
         if (type === 'BIN → HEX') {
             var toDecimal = fromBaseWithSteps(val, 2);
             var toHex = toBaseWithSteps(toDecimal.result, 16);
-            var combined = ['Step 1 — convert binary to decimal first:'].concat(toDecimal.steps)
-                .concat(['Step 2 — convert that decimal value to hex:']).concat(toHex.steps);
+            var combined = ['<strong>Step 1: Convert Binary to Decimal:</strong>'].concat(toDecimal.steps)
+                .concat(['<strong>Step 2: Convert Decimal to Hexadecimal:</strong>']).concat(toHex.steps);
             return { result: toHex.result, steps: combined.join('\n') };
         }
-    } catch (e) { return { result: 'Error', steps: 'Invalid input: ' + e.message }; }
-    return { result: 'Error', steps: 'Unknown conversion' };
+        if (type === 'HEX → BINARY') {
+            var hexToDec = fromBaseWithSteps(val, 16);
+            var decToBin = toBaseWithSteps(hexToDec.result, 2);
+            var combinedHexBin = ['<strong>Step 1: Convert Hex to Decimal:</strong>'].concat(hexToDec.steps)
+                .concat(['<strong>Step 2: Convert Decimal to Binary:</strong>']).concat(decToBin.steps);
+            return { result: decToBin.result, steps: combinedHexBin.join('\n') };
+        }
+    } catch (e) { return { result: 'Error', steps: 'Invalid numeric input: ' + e.message }; }
+    return { result: 'Error', steps: 'Unknown conversion request' };
 }
 
-// ================= MATRIX =================
+// ================= MATRIX ALGEBRA (2x2) =================
 function evaluateMatrix(expr) {
     var u = expr.toLowerCase();
-    var m = u.match(/det2x2\s*\(?\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)/);
+
+    // det2x2(a, b, c, d)
+    var m = u.match(/det2x2\s*\(?\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/);
     if (m) {
         var a = +m[1], b = +m[2], c = +m[3], d = +m[4];
         var ad = a * d, bc = b * c, det = ad - bc;
         var steps = [
-            'Matrix: [ ' + a + ' ' + b + ' ; ' + c + ' ' + d + ' ]',
-            'Determinant formula: det = (a×d) − (b×c)',
-            a + ' × ' + d + ' = ' + ad,
-            b + ' × ' + c + ' = ' + bc,
-            'det = ' + ad + ' − ' + bc + ' = ' + det
+            '<strong>2×2 Matrix Determinant:</strong>',
+            'Matrix A = [ [' + a + ', ' + b + '], [' + c + ', ' + d + '] ]',
+            'Formula: det(A) = (a × d) − (b × c)',
+            'Step 1 (Main Diagonal): ' + a + ' × ' + d + ' = ' + ad,
+            'Step 2 (Anti-Diagonal): ' + b + ' × ' + c + ' = ' + bc,
+            'Step 3: det(A) = ' + ad + ' − ' + bc + ' = <strong>' + det + '</strong>',
+            det === 0 ? '<em>Matrix is singular (non-invertible).</em>' : '<em>Matrix is non-singular (invertible).</em>'
         ];
         return { result: det, steps: steps.join('\n') };
     }
+
+    // inv2x2(a, b, c, d)
+    m = u.match(/inv2x2\s*\(?\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/);
+    if (m) {
+        var a2 = +m[1], b2 = +m[2], c2 = +m[3], d2 = +m[4];
+        var det2 = a2 * d2 - b2 * c2;
+        if (det2 === 0) return { result: 'Error', steps: 'Determinant is 0. Inverse does not exist.' };
+        var invA = (d2 / det2).toFixed(3), invB = (-b2 / det2).toFixed(3);
+        var invC = (-c2 / det2).toFixed(3), invD = (a2 / det2).toFixed(3);
+        var stepsInv = [
+            '<strong>2×2 Matrix Inverse Formula:</strong> A<sup>-1</sup> = (1 / det(A)) × [ [d, -b], [-c, a] ]',
+            'det(A) = (' + a2 + '×' + d2 + ') − (' + b2 + '×' + c2 + ') = ' + det2,
+            'Adjugate Matrix = [ [' + d2 + ', ' + (-b2) + '], [' + (-c2) + ', ' + a2 + '] ]',
+            'A<sup>-1</sup> = [ [' + invA + ', ' + invB + '], [' + invC + ', ' + invD + '] ]'
+        ];
+        return { result: '[[' + invA + ', ' + invB + '], [' + invC + ', ' + invD + ']]', steps: stepsInv.join('\n') };
+    }
+
+    // add2x2
     m = u.match(/add2x2\s*\(?\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)/);
     if (m) {
         var vals = m.slice(1, 9).map(Number);
         var r11 = vals[0] + vals[4], r12 = vals[1] + vals[5], r21 = vals[2] + vals[6], r22 = vals[3] + vals[7];
         var steps2 = [
-            'Matrix A = [ ' + vals[0] + ' ' + vals[1] + ' ; ' + vals[2] + ' ' + vals[3] + ' ]',
-            'Matrix B = [ ' + vals[4] + ' ' + vals[5] + ' ; ' + vals[6] + ' ' + vals[7] + ' ]',
-            'Add matching positions (element-wise):',
-            'Row1Col1: ' + vals[0] + ' + ' + vals[4] + ' = ' + r11,
-            'Row1Col2: ' + vals[1] + ' + ' + vals[5] + ' = ' + r12,
-            'Row2Col1: ' + vals[2] + ' + ' + vals[6] + ' = ' + r21,
-            'Row2Col2: ' + vals[3] + ' + ' + vals[7] + ' = ' + r22,
-            'Result = [ ' + r11 + ' ' + r12 + ' ; ' + r21 + ' ' + r22 + ' ]'
+            '<strong>2×2 Matrix Addition:</strong>',
+            'Matrix A = [ [' + vals[0] + ', ' + vals[1] + '], [' + vals[2] + ', ' + vals[3] + '] ]',
+            'Matrix B = [ [' + vals[4] + ', ' + vals[5] + '], [' + vals[6] + ', ' + vals[7] + '] ]',
+            'Row 1, Col 1: ' + vals[0] + ' + ' + vals[4] + ' = ' + r11,
+            'Row 1, Col 2: ' + vals[1] + ' + ' + vals[5] + ' = ' + r12,
+            'Row 2, Col 1: ' + vals[2] + ' + ' + vals[6] + ' = ' + r21,
+            'Row 2, Col 2: ' + vals[3] + ' + ' + vals[7] + ' = ' + r22,
+            'Result = <strong>[ [' + r11 + ', ' + r12 + '], [' + r21 + ', ' + r22 + '] ]</strong>'
         ];
-        return { result: '[' + r11 + ' ' + r12 + '; ' + r21 + ' ' + r22 + ']', steps: steps2.join('\n') };
+        return { result: '[[' + r11 + ', ' + r12 + '], [' + r21 + ', ' + r22 + ']]', steps: steps2.join('\n') };
     }
+
+    // mul2x2
     m = u.match(/mul2x2\s*\(?\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)/);
     if (m) {
         var v = m.slice(1, 9).map(Number);
@@ -946,18 +1236,19 @@ function evaluateMatrix(expr) {
         var r2c1 = v[2] * v[4] + v[3] * v[6];
         var r2c2 = v[2] * v[5] + v[3] * v[7];
         var steps3 = [
-            'Matrix A = [ ' + v[0] + ' ' + v[1] + ' ; ' + v[2] + ' ' + v[3] + ' ]',
-            'Matrix B = [ ' + v[4] + ' ' + v[5] + ' ; ' + v[6] + ' ' + v[7] + ' ]',
-            'Each result cell = (row of A) · (column of B):',
-            'Row1Col1: (' + v[0] + '×' + v[4] + ') + (' + v[1] + '×' + v[6] + ') = ' + r1c1,
-            'Row1Col2: (' + v[0] + '×' + v[5] + ') + (' + v[1] + '×' + v[7] + ') = ' + r1c2,
-            'Row2Col1: (' + v[2] + '×' + v[4] + ') + (' + v[3] + '×' + v[6] + ') = ' + r2c1,
-            'Row2Col2: (' + v[2] + '×' + v[5] + ') + (' + v[3] + '×' + v[7] + ') = ' + r2c2,
-            'Result = [ ' + r1c1 + ' ' + r1c2 + ' ; ' + r2c1 + ' ' + r2c2 + ' ]'
+            '<strong>2×2 Matrix Multiplication (Row · Column):</strong>',
+            'Matrix A = [ [' + v[0] + ', ' + v[1] + '], [' + v[2] + ', ' + v[3] + '] ]',
+            'Matrix B = [ [' + v[4] + ', ' + v[5] + '], [' + v[6] + ', ' + v[7] + '] ]',
+            'Cell (1,1) = (' + v[0] + ' × ' + v[4] + ') + (' + v[1] + ' × ' + v[6] + ') = ' + r1c1,
+            'Cell (1,2) = (' + v[0] + ' × ' + v[5] + ') + (' + v[1] + ' × ' + v[7] + ') = ' + r1c2,
+            'Cell (2,1) = (' + v[2] + ' × ' + v[4] + ') + (' + v[3] + ' × ' + v[6] + ') = ' + r2c1,
+            'Cell (2,2) = (' + v[2] + ' × ' + v[5] + ') + (' + v[3] + ' × ' + v[7] + ') = ' + r2c2,
+            'Result = <strong>[ [' + r1c1 + ', ' + r1c2 + '], [' + r2c1 + ', ' + r2c2 + '] ]</strong>'
         ];
-        return { result: '[' + r1c1 + ' ' + r1c2 + '; ' + r2c1 + ' ' + r2c2 + ']', steps: steps3.join('\n') };
+        return { result: '[[' + r1c1 + ', ' + r1c2 + '], [' + r2c1 + ', ' + r2c2 + ']]', steps: steps3.join('\n') };
     }
-    return { result: 'Error', steps: 'No matrix operation detected. Try det2x2(1,2,3,4), add2x2(...), or mul2x2(...) with 4 or 8 comma-separated numbers.' };
+
+    return { result: 'Error', steps: 'Supported Matrix operations: det2x2(a,b,c,d), inv2x2(a,b,c,d), add2x2(a,b,c,d,e,f,g,h), mul2x2(a,b,c,d,e,f,g,h)' };
 }
 
 // ================= COMPLEX NUMBERS =================
@@ -970,35 +1261,48 @@ function evaluateComplex(expr) {
         if (!isNaN(num)) return { re: num, im: 0 };
         return null;
     };
+
     var lower = expr.toLowerCase();
-    var fn = lower.match(/^(re|im|conj|abs|arg)\((.+)\)$/);
+    var fn = lower.match(/^(re|im|conj|abs|arg|polar)\((.+)\)$/);
     if (fn) {
         var c = parseComplex(fn[2]);
-        if (!c) return { result: 'Error', steps: 'Could not parse complex number. Use the form a+bi, e.g. 3+4i.' };
-        var label = 'Complex number: ' + c.re + (c.im >= 0 ? '+' : '') + c.im + 'i  (real part a=' + c.re + ', imaginary part b=' + c.im + ')';
-        if (fn[1] === 're') return { result: c.re, steps: label + '\nre(a+bi) = a\nre(' + fn[2] + ') = ' + c.re };
-        if (fn[1] === 'im') return { result: c.im, steps: label + '\nim(a+bi) = b\nim(' + fn[2] + ') = ' + c.im };
+        if (!c) return { result: 'Error', steps: 'Could not parse complex number format (e.g. 3+4i, 5-2i).' };
+        var label = '<strong>Complex Number z:</strong> ' + c.re + (c.im >= 0 ? ' + ' : ' − ') + Math.abs(c.im) + 'i  (Real part a = ' + c.re + ', Imaginary part b = ' + c.im + ')';
+
+        if (fn[1] === 're') return { result: c.re, steps: label + '\nRe(a + bi) = a\nRe(' + fn[2] + ') = <strong>' + c.re + '</strong>' };
+        if (fn[1] === 'im') return { result: c.im, steps: label + '\nIm(a + bi) = b\nIm(' + fn[2] + ') = <strong>' + c.im + '</strong>' };
         if (fn[1] === 'conj') {
             var conj = c.re + (-c.im >= 0 ? '+' : '') + (-c.im) + 'i';
-            return { result: conj, steps: label + '\nThe conjugate flips the sign of the imaginary part: a+bi → a−bi\nconj(' + fn[2] + ') = ' + conj };
+            return { result: conj, steps: label + '\n<strong>Complex Conjugate:</strong> Invert sign of imaginary component (a + bi → a − bi)\nz* = <strong>' + conj + '</strong>' };
         }
         if (fn[1] === 'abs') {
             var sq = c.re * c.re + c.im * c.im;
             var mag = Math.sqrt(sq);
-            return { result: mag, steps: label + '\n|a+bi| = √(a² + b²)\n= √(' + c.re + '² + ' + c.im + '²)\n= √(' + (c.re * c.re) + ' + ' + (c.im * c.im) + ')\n= √' + sq + '\n= ' + mag };
+            return { result: mag, steps: label + '\n<strong>Modulus |z|:</strong> |a + bi| = √(a² + b²)\n= √(' + c.re + '² + ' + c.im + '²)\n= √(' + (c.re * c.re) + ' + ' + (c.im * c.im) + ')\n= √' + sq + ' = <strong>' + mag.toFixed(4) + '</strong>' };
         }
         if (fn[1] === 'arg') {
             var ang = Math.atan2(c.im, c.re);
-            return { result: ang, steps: label + '\narg(a+bi) = atan2(b, a)\n= atan2(' + c.im + ', ' + c.re + ')\n= ' + ang + ' radians' };
+            var deg = (ang * 180 / Math.PI);
+            return { result: ang.toFixed(4) + ' rad', steps: label + '\n<strong>Argument θ:</strong> arg(z) = atan2(b, a)\n= atan2(' + c.im + ', ' + c.re + ')\n= <strong>' + ang.toFixed(4) + ' radians (' + deg.toFixed(2) + '°)</strong>' };
+        }
+        if (fn[1] === 'polar') {
+            var magP = Math.sqrt(c.re * c.re + c.im * c.im);
+            var angP = Math.atan2(c.im, c.re);
+            return { result: magP.toFixed(3) + '∠' + (angP * 180 / Math.PI).toFixed(1) + '°', steps: label + '\n<strong>Polar Form (r e<sup>iθ</sup>):</strong>\nr = |z| = ' + magP.toFixed(4) + '\nθ = ' + angP.toFixed(4) + ' rad\nPolar Representation: <strong>' + magP.toFixed(4) + ' · e<sup>' + angP.toFixed(4) + 'i</sup></strong>' };
         }
     }
-    return { result: 'Error', steps: 'Use re(), im(), conj(), abs(), or arg() with a complex number like 3+4i.' };
+    return evaluateUniversal(expr);
 }
 
 // ================= MAIN EVALUATE WITH FALLBACK =================
 function evaluate() {
     var raw = exprInput.value.trim();
-    if (!raw) { resultDisplay.textContent = '0'; fallbackMessage.style.display = 'none'; return; }
+    if (!raw) {
+        resultDisplay.textContent = '0';
+        fallbackMessage.style.display = 'none';
+        updateDesktopSidePanel('', '', '');
+        return;
+    }
 
     fallbackMessage.style.display = 'none';
     var res, usedFallback = false;
@@ -1019,7 +1323,7 @@ function evaluate() {
             var fallbackRes = evaluateUniversal(raw);
             if (fallbackRes.result !== 'Error' && !(typeof fallbackRes.result === 'string' && fallbackRes.result.indexOf('Error') === 0)) {
                 usedFallback = true;
-                fallbackRes.steps = 'Expression entered does not match the branch, evaluating using universal branch.\n\n' + fallbackRes.steps;
+                fallbackRes.steps = '<strong>Fallback Notice:</strong> Expression evaluated via Universal Engine.\n\n' + fallbackRes.steps;
                 res = fallbackRes;
             }
         }
@@ -1031,7 +1335,7 @@ function evaluate() {
     if (typeof res.result === 'number' && isFinite(res.result)) lastAnswer = res.result;
 
     if (usedFallback) {
-        fallbackMessage.textContent = 'Expression entered does not match the branch, evaluating using universal branch.';
+        fallbackMessage.textContent = 'Expression evaluated using Universal Engine.';
         fallbackMessage.style.display = 'block';
     }
 
@@ -1042,12 +1346,14 @@ function evaluate() {
 
 // ================= UI ACTIONS =================
 function toggleDrawer(open) {
-    document.getElementById('drawer').classList.toggle('open', open);
-    document.getElementById('overlay').classList.toggle('active', open);
+    var drawer = document.getElementById('drawer');
+    var overlay = document.getElementById('overlay');
+    if (drawer) drawer.classList.toggle('open', open);
+    if (overlay) overlay.classList.toggle('active', open);
 }
 
 function clearCache() {
-    if (confirm('Clear all cache, history, and reset to defaults?')) {
+    if (confirm('Clear calculation history, saved preferences, and reset app?')) {
         localStorage.clear();
         historyEntries = [];
         saveHistory();
@@ -1059,12 +1365,13 @@ function clearCache() {
         exprInput.value = '';
         resultDisplay.textContent = '0';
         fallbackMessage.style.display = 'none';
-        showToast('Cache cleared. Theme and font reset.');
+        updateDesktopSidePanel('', '', '');
+        showToast('App reset to clean defaults.');
     }
 }
 
 function hardResetAndRefresh() {
-    if (confirm('Reset session: This will clear all history, preferences, and reload the app. Continue?')) {
+    if (confirm('Reload application and refresh cache?')) {
         localStorage.clear();
         if ('caches' in window) {
             caches.keys().then(function(names) {
@@ -1084,7 +1391,7 @@ var pendingUpdateWorker = null;
 function showUpdateModal(message) {
     if (!updateModal) return;
     var msgElem = document.getElementById('updateMessage');
-    if (msgElem) msgElem.textContent = message || 'A new version is available. Please update.';
+    if (msgElem) msgElem.textContent = message || 'A new offline version is ready. Reload now?';
     updateModal.style.display = 'flex';
 }
 function hideUpdateModal() { if (updateModal) updateModal.style.display = 'none'; }
@@ -1106,96 +1413,73 @@ function setupServiceWorkerUpdates() {
 }
 
 function doUpdateNow() {
-    if (pendingUpdateWorker) { pendingUpdateWorker.postMessage({ action: 'skipWaiting' }); hideUpdateModal(); }
-    else window.location.reload(true);
+    if (pendingUpdateWorker) {
+        pendingUpdateWorker.postMessage({ action: 'skipWaiting' });
+        hideUpdateModal();
+    } else {
+        window.location.reload(true);
+    }
 }
 
 // ================= CONTENT PAGES =================
 function showHelpPage() {
     var helpHtml = '<div class="about-text">' +
         '<h3>HOW TO USE THIS CALCULATOR</h3>' +
-        '<p><strong>Step-by-step:</strong> every time you press "=" the app takes you straight to a Step-by-Step Evaluation screen showing exactly how your answer was reached. Tap "← BACK" to return to the calculator.</p>' +
-        '<h3>--- BASIC ARITHMETIC ---</h3>' +
-        '<p><strong>Addition:</strong> 5 + 3</p>' +
-        '<p><strong>Subtraction:</strong> 10 - 4</p>' +
-        '<p><strong>Multiplication:</strong> 6 × 7</p>' +
-        '<p><strong>Division:</strong> 15 ÷ 3</p>' +
-        '<p><strong>Exponent/Power:</strong> 2^3 or 5^2</p>' +
-        '<p><strong>Modulo:</strong> 10 % 3 (result: 1)</p>' +
-        '<p><strong>Percentage:</strong> 200% (result: 2)</p>' +
-        '<p><strong>Factorial:</strong> 5! or (3+2)!</p>' +
-        '<p><strong>Square Root:</strong> √16 or √(9+7)</p>' +
-        '<p><strong>Absolute Value:</strong> abs(-5) or abs-5</p>' +
-        '<p><strong>Constants:</strong> π and e are supported directly</p>' +
-        '<p><strong>Last Answer:</strong> tap ANS to reuse your previous result</p>' +
-        '<h3>--- SCIENTIFIC FUNCTIONS ---</h3>' +
-        '<p><strong>Sine / Cosine / Tangent:</strong> sin30, cos(0), tan45</p>' +
-        '<p><strong>Log base 10 / Natural Log:</strong> log100, ln2.718</p>' +
-        '<h3>--- RELATIONAL & LOGICAL ---</h3>' +
-        '<p><strong>Equal:</strong> 5==5 &nbsp; <strong>Not equal:</strong> 5≠3</p>' +
-        '<p><strong>Comparisons:</strong> &gt; &lt; ≥ ≤</p>' +
-        '<p><strong>AND / OR / NOT / XOR / IMPLIES / EQUIV</strong> combine TRUE/FALSE values</p>' +
-        '<h3>--- COMBINATORICS ---</h3>' +
-        '<p>nCr(5,2) = 10 &nbsp; nPr(5,2) = 20</p>' +
-        '<h3>--- NUMBER THEORY ---</h3>' +
-        '<p>gcd(12,8), lcm(12,8), mod(10,3), prime?(7), factor(60) — each shows its full working, not just the answer.</p>' +
+        '<p><strong>Universal CS Calculator</strong> provides comprehensive, verified step-by-step evaluations across Computer Science disciplines with zero internet connection required.</p>' +
+        '<h3>--- BASIC & SCIENTIFIC ARITHMETIC ---</h3>' +
+        '<p><strong>Operations:</strong> +, −, ×, ÷, ^ (Power), % (Modulo), ! (Factorial), √ (Square Root)</p>' +
+        '<p><strong>Functions:</strong> sin(x), cos(x), tan(x), abs(x), log(x), ln(x)</p>' +
+        '<p><strong>Constants:</strong> π (3.14159...), e (2.71828...)</p>' +
+        '<h3>--- BITWISE OPERATORS ---</h3>' +
+        '<p><code>a &amp; b</code> (AND), <code>a | b</code> (OR), <code>a ^ b</code> (XOR), <code>~a</code> (NOT), <code>a &lt;&lt; b</code> (Left Shift), <code>a &gt;&gt; b</code> (Right Shift) with automatic 8-bit/32-bit column breakdown.</p>' +
         '<h3>--- NUMBER SYSTEM CONVERSIONS ---</h3>' +
-        '<p>Format: <strong>DEC → BINARY 255</strong> (also HEX, OCT, BIN variants) — shows the division/remainder or place-value working.</p>' +
+        '<p><strong>Usage:</strong> Tap <code>DEC → BINARY</code> and enter <code>255</code> to view full repeated-division remainder tables and place-value polynomials.</p>' +
+        '<h3>--- NUMBER THEORY ---</h3>' +
+        '<p><code>gcd(120, 45)</code>, <code>lcm(12, 18)</code>, <code>prime?(104729)</code>, <code>factor(360)</code>, <code>phi(36)</code>, <code>modpow(7, 256, 13)</code></p>' +
+        '<h3>--- COMBINATORICS ---</h3>' +
+        '<p><code>nCr(10, 3)</code>, <code>nPr(8, 4)</code>, <code>6!</code></p>' +
+        '<h3>--- PROPOSITIONAL LOGIC ---</h3>' +
+        '<p><code>TRUE AND (FALSE OR TRUE)</code>, <code>TRUE IMPLIES FALSE</code>, <code>p EQUIV q</code></p>' +
         '<h3>--- SET THEORY ---</h3>' +
-        '<p>UNION, ∩, COMPLEMENT, \\, SUBSET, POWERSET — symbolic explanations</p>' +
+        '<p><code>{1,2,3} UNION {3,4,5}</code>, <code>{1,2,3} ∩ {2,3,4}</code>, <code>{1,2,3} \\ {2}</code>, <code>POWERSET({1,2,3})</code>, <code>SUBSET({1,2}, {1,2,3})</code></p>' +
         '<h3>--- MATRIX (2×2) ---</h3>' +
-        '<p>det2x2(1,2,3,4), add2x2(1,2,3,4,5,6,7,8), mul2x2(1,2,3,4,5,6,7,8)</p>' +
+        '<p><code>det2x2(1,2,3,4)</code>, <code>inv2x2(1,2,3,4)</code>, <code>add2x2(1,2,3,4,5,6,7,8)</code>, <code>mul2x2(1,2,3,4,5,6,7,8)</code></p>' +
         '<h3>--- COMPLEX NUMBERS ---</h3>' +
-        '<p>re(3+4i), im(3+4i), conj(3+4i), abs(3+4i), arg(3+4i)</p>' +
-        '<h3>--- TIPS ---</h3>' +
-        '<p>Tap anywhere in the expression to move the cursor, or use ◀ ▶ to navigate precisely.</p>' +
-        '<p>If an expression fails in a specific branch, it automatically falls back to Universal mode.</p>' +
+        '<p><code>re(3+4i)</code>, <code>im(3+4i)</code>, <code>conj(3+4i)</code>, <code>abs(3+4i)</code>, <code>arg(3+4i)</code>, <code>polar(3+4i)</code></p>' +
         '</div>';
-    showFullPage('HELP / HOW TO USE', helpHtml);
+    showFullPage('HELP / DOCUMENTATION', helpHtml);
 }
 
 function showPrivacyPage() {
     var privacyHtml = '<div class="about-text">' +
         '<h2>PRIVACY POLICY</h2>' +
-        '<p class="muted-small">Last updated: May 2026</p>' +
-        '<h3>1. Introduction</h3>' +
-        '<p>This privacy policy applies to the <strong>Universal CS Calculator</strong> application developed by Hanz Dalmino.</p>' +
-        '<h3>2. Data Collection</h3>' +
-        '<p><strong>We do not collect any personal data.</strong> Calculations, history, and preferences are stored locally on your device and never transmitted anywhere.</p>' +
-        '<h3>3. Information Stored Locally</h3>' +
-        '<ul><li>Calculation history</li><li>Theme preference</li><li>Font preference</li></ul>' +
-        '<p>Clear it anytime via "Clear Cache" in the app.</p>' +
-        '<h3>4. Third-Party Services</h3>' +
-        '<p>No analytics, advertising, or tracking services are used.</p>' +
-        '<h3>5. Internet Usage</h3>' +
-        '<p>The app works fully offline after the first visit.</p>' +
-        '<h3>6. Children\'s Privacy</h3>' +
-        '<p>No personal information is collected from anyone, including children under 13.</p>' +
-        '<h3>7. Changes to This Policy</h3>' +
-        '<p>Updates will be reflected on this page.</p>' +
-        '<h3>8. Contact</h3>' +
-        '<p style="text-align:center; margin-top:10px;"><a href="https://hdalmino0011.github.io/Computer-Science-Calculator/" style="color:var(--accent); font-weight:bold;">hdalmino0011.github.io/Computer-Science-Calculator</a></p>' +
-        '<p style="text-align:center; margin-top:5px;">Email: <a href="mailto:dalminohanz14@gmail.com" style="color:var(--accent);">dalminohanz14@gmail.com</a></p>' +
+        '<p class="muted-small">Universal CS Calculator • Offline PWA</p>' +
+        '<h3>1. Zero Data Collection</h3>' +
+        '<p><strong>We do not collect, track, or transmit any personal data.</strong> All computations, calculation histories, and custom theme/font preferences remain strictly stored on your local device storage.</p>' +
+        '<h3>2. Offline-First Operation</h3>' +
+        '<p>The application is cached locally via Service Worker. Once installed, it performs all mathematical evaluations completely offline without sending network requests.</p>' +
+        '<h3>3. Data Erasure</h3>' +
+        '<p>You can erase all locally cached history and preferences at any time using the <strong>Clear App Data</strong> option in the menu.</p>' +
+        '<h3>4. Developer Contact</h3>' +
+        '<p>Developer: <strong>Hanz Dalmino</strong> (BSIT, Cebu Technological University)<br>Email: <a href="mailto:dalminohanz14@gmail.com" style="color:var(--accent);">dalminohanz14@gmail.com</a></p>' +
         '</div>';
-    showFullPage('PRIVACY & POLICY', privacyHtml);
+    showFullPage('PRIVACY POLICY', privacyHtml);
 }
 
 function showAboutPage() {
     var aboutHtml = '<div class="about-text">' +
-        '<h3>Developed by Hanz Dalmino</h3>' +
-        '<p>A Bachelor of Science in Information Technology student from Cebu Technological University - Main Campus</p>' +
-        '<h3>Purpose</h3>' +
-        '<p>This Universal CS Calculator is designed for students and professionals in <strong>Computer Science, Information Technology, Computer Engineering,</strong> and related fields, offering step-by-step evaluation across key disciplines.</p>' +
-        '<h3>Topics Covered</h3>' +
+        '<h3>UNIVERSAL CS CALCULATOR</h3>' +
+        '<p>Crafted for students, educators, and software engineers in <strong>Computer Science, IT, Computer Engineering, and Discrete Mathematics</strong>.</p>' +
+        '<h3>Author</h3>' +
+        '<p><strong>Hanz Dalmino</strong> — BSIT Student at Cebu Technological University - Main Campus.</p>' +
+        '<h3>Key Capabilities</h3>' +
         '<ul>' +
-        '<li>Arithmetic & Bitwise Operations</li><li>Relational and Logical Operators</li>' +
-        '<li>Combinatorics (nCr, nPr, Factorials)</li><li>Boolean Algebra and Logic Gates</li>' +
-        '<li>Set Theory</li><li>Number Theory (GCD, LCM, Modulo, Primality, Factoring)</li>' +
-        '<li>Number System Conversions</li><li>Matrix Algebra (2×2)</li>' +
-        '<li>Complex Numbers</li><li>Scientific Functions</li>' +
+        '<li>100% Offline-Capable Progressive Web App (PWA)</li>' +
+        '<li>Comprehensive Step-by-Step Proofs and Working for every branch</li>' +
+        '<li>Desktop Side-by-Side Mathematical Inspector</li>' +
+        '<li>Pure Vector CSS & SVG Graphics with zero external icon CDNs</li>' +
+        '<li>12 Handcrafted High-Contrast Aesthetic Themes</li>' +
         '</ul>' +
-        '<h3>Why This Calculator?</h3>' +
-        '<p>It shows every step of the evaluation to help students understand the process, and handles mixed arithmetic, bitwise, relational, and logical expressions in one line — fully customizable with 12 themes and multiple fonts, on desktop, tablet, and mobile.</p>' +
         '</div>';
     showFullPage('ABOUT', aboutHtml);
 }
@@ -1220,19 +1504,19 @@ function showThemesPage() {
 
 function showFontPage() {
     var fonts = [
-        { label: 'Sans (Inter)', value: "'Inter', 'Segoe UI', system-ui, sans-serif" },
-        { label: 'Times New Roman', value: 'Times New Roman' },
-        { label: 'Arial', value: 'Arial' },
-        { label: 'Courier New (Mono)', value: 'Courier New' },
-        { label: 'Georgia', value: 'Georgia' },
-        { label: 'Verdana', value: 'Verdana' }
+        { label: 'Inter Sans (Default)', value: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif" },
+        { label: 'JetBrains Mono (Developer)', value: "'JetBrains Mono', 'Courier New', monospace" },
+        { label: 'Times New Roman (Academic)', value: 'Times New Roman, serif' },
+        { label: 'Arial (Clean)', value: 'Arial, sans-serif' },
+        { label: 'Georgia (Editorial)', value: 'Georgia, serif' },
+        { label: 'Verdana (Accessible)', value: 'Verdana, sans-serif' }
     ];
     var html = '<div class="font-selector-page">';
     for (var i = 0; i < fonts.length; i++) {
         html += '<div class="font-option" data-font="' + fonts[i].value + '" style="font-family:' + fonts[i].value + '">' + fonts[i].label + '</div>';
     }
     html += '</div>';
-    showFullPage('FONT', html);
+    showFullPage('TYPOGRAPHY & FONTS', html);
 
     var opts = document.querySelectorAll('.font-option');
     for (var i = 0; i < opts.length; i++) {
@@ -1245,7 +1529,7 @@ function showFontPage() {
 
 function showHistoryPage() {
     if (historyEntries.length === 0) {
-        showFullPage('HISTORY', '<div class="history-item-page">No history yet</div>');
+        showFullPage('CALCULATION HISTORY', '<div class="history-item-page">No calculations recorded yet.</div>');
         return;
     }
     var html = '<div class="history-list-page">';
@@ -1258,7 +1542,7 @@ function showHistoryPage() {
                 '</div>';
     }
     html += '</div><button id="clearHistoryFromPage" class="action-btn danger-btn full-width-btn">CLEAR ALL HISTORY</button>';
-    showFullPage('HISTORY', html);
+    showFullPage('CALCULATION HISTORY', html);
 
     var items = document.querySelectorAll('.history-item-page[data-index]');
     for (var i = 0; i < items.length; i++) {
@@ -1266,9 +1550,9 @@ function showHistoryPage() {
             var idx = parseInt(this.getAttribute('data-index'), 10);
             var h = historyEntries[idx];
             exprInput.value = h.expr;
-            var branchBtn = document.querySelector('.branch-drawer-btn[data-branch="' + h.branch + '"]');
-            if (branchBtn) branchBtn.click();
+            switchBranch(h.branch);
             showCalculatorView();
+            evaluate();
             exprInput.focus();
         });
     }
@@ -1278,21 +1562,21 @@ function showHistoryPage() {
 
 function getThemeColor(t) {
     var c = {
-        default: '#7c3aed', obsidian: '#a855f7', royalblue: '#3b82f6', orange: '#f97316',
-        highcontrast: '#ffff00', forest: '#22c55e', crimson: '#ef4444', slate: '#64748b',
-        purple: '#c084fc', midnight: '#60a5fa', sand: '#fbbf24', 'cyan-night': '#06b6d4'
+        default: '#7c3aed', obsidian: '#a855f7', royalblue: '#2563eb', orange: '#ea580c',
+        highcontrast: '#facc15', forest: '#16a34a', crimson: '#e11d48', slate: '#475569',
+        purple: '#9333ea', midnight: '#4f46e5', sand: '#d97706', 'cyan-night': '#0891b2'
     };
     return c[t] || '#7c3aed';
 }
 
 // ================= KEYBOARD SUPPORT =================
 function handlePhysicalKeydown(e) {
-    if (document.activeElement !== exprInput) return;
     if (e.key === 'Enter') { e.preventDefault(); evaluate(); return; }
     if (e.key === 'Escape') {
         exprInput.value = '';
         resultDisplay.textContent = '0';
         if (fallbackMessage) fallbackMessage.style.display = 'none';
+        updateDesktopSidePanel('', '', '');
         return;
     }
 }
@@ -1306,20 +1590,26 @@ function init() {
     updateBranchIndicator();
     renderButtons();
 
+    // Drawer branch buttons
     var branchBtns = document.querySelectorAll('.branch-drawer-btn');
     for (var i = 0; i < branchBtns.length; i++) {
         branchBtns[i].addEventListener('click', function() {
-            var allBtns = document.querySelectorAll('.branch-drawer-btn');
-            for (var j = 0; j < allBtns.length; j++) allBtns[j].classList.remove('active');
-            this.classList.add('active');
-            currentBranch = this.getAttribute('data-branch');
-            updateBranchIndicator();
-            renderButtons();
-            if (fallbackMessage) fallbackMessage.style.display = 'none';
+            var branch = this.getAttribute('data-branch');
+            switchBranch(branch);
             toggleDrawer(false);
         });
     }
 
+    // Desktop mode tabs
+    var modeTabs = document.querySelectorAll('.mode-tab-btn');
+    for (var k = 0; k < modeTabs.length; k++) {
+        modeTabs[k].addEventListener('click', function() {
+            var branch = this.getAttribute('data-branch');
+            switchBranch(branch);
+        });
+    }
+
+    // Drawer content links
     document.getElementById('drawerHelpBtn').onclick = function() { toggleDrawer(false); showHelpPage(); };
     document.getElementById('drawerPrivacyBtn').onclick = function() { toggleDrawer(false); showPrivacyPage(); };
     document.getElementById('drawerThemesBtn').onclick = function() { toggleDrawer(false); showThemesPage(); };
@@ -1329,6 +1619,7 @@ function init() {
     document.getElementById('drawerClearCacheBtn').onclick = function() { toggleDrawer(false); clearCache(); };
     document.getElementById('drawerExitBtn').onclick = function() { toggleDrawer(false); hardResetAndRefresh(); };
 
+    // Action buttons
     document.getElementById('equalBtn').onclick = evaluate;
     document.getElementById('clearBtn').onclick = function() {
         buzz();
@@ -1337,16 +1628,34 @@ function init() {
         if (fallbackMessage) fallbackMessage.style.display = 'none';
         exprInput.focus();
     };
+
+    var inputClearBtn = document.getElementById('inputClearBtn');
+    if (inputClearBtn) {
+        inputClearBtn.onclick = function() {
+            buzz();
+            exprInput.value = '';
+            resultDisplay.textContent = '0';
+            exprInput.focus();
+        };
+    }
+
     document.getElementById('leftBtn').onclick = function() { buzz(); moveCaret(-1); };
     document.getElementById('rightBtn').onclick = function() { buzz(); moveCaret(1); };
     document.getElementById('backBtn').onclick = function() { buzz(); backspaceAtCaret(); };
-    document.getElementById('ansToggleBtn').onclick = function() { buzz(); insertAtCaret('ANS'); showToast('Inserted last answer'); };
+    document.getElementById('ansToggleBtn').onclick = function() { buzz(); insertAtCaret('ANS'); showToast('Inserted last answer (' + lastAnswer + ')'); };
 
+    // View controls
     document.getElementById('menuToggleBtn').onclick = function() { toggleDrawer(true); };
     document.getElementById('closeDrawerBtn').onclick = function() { toggleDrawer(false); };
     document.getElementById('overlay').onclick = function() { toggleDrawer(false); };
     document.getElementById('closeFullPageBtn').onclick = function() { showCalculatorView(); };
     document.getElementById('backToCalculatorBtn').onclick = function() { showCalculatorView(); };
+
+    var copyDesktopBtn = document.getElementById('copyDesktopStepsBtn');
+    if (copyDesktopBtn) copyDesktopBtn.onclick = copyStepsToClipboard;
+
+    var copyStepsBtn = document.getElementById('copyStepsBtn');
+    if (copyStepsBtn) copyStepsBtn.onclick = copyStepsToClipboard;
 
     document.getElementById('keyboardToggleBtn').onclick = function() {
         buzz();
@@ -1358,16 +1667,22 @@ function init() {
 
     initPwaWelcomeModal();
 
-    exprInput.addEventListener('keydown', handlePhysicalKeydown);
-
-    var activeBtns = document.querySelectorAll('.branch-drawer-btn');
-    for (var i = 0; i < activeBtns.length; i++) {
-        if (activeBtns[i].getAttribute('data-branch') === currentBranch) activeBtns[i].classList.add('active');
-    }
+    window.addEventListener('keydown', handlePhysicalKeydown);
 
     setupServiceWorkerUpdates();
 
-    exprInput.addEventListener('focus', function() { exprInput.removeAttribute('inputmode'); });
+    // Register service worker
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function() {
+            navigator.serviceWorker.register('./sw.js')
+                .then(function(reg) {
+                    console.log('[PWA] ServiceWorker registered with scope:', reg.scope);
+                })
+                .catch(function(err) {
+                    console.warn('[PWA] ServiceWorker registration failed:', err);
+                });
+        });
+    }
 }
 
 init();
