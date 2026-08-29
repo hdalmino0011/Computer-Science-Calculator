@@ -1651,9 +1651,6 @@ function init() {
     document.getElementById('closeFullPageBtn').onclick = function() { showCalculatorView(); };
     document.getElementById('backToCalculatorBtn').onclick = function() { showCalculatorView(); };
 
-    var copyDesktopBtn = document.getElementById('copyDesktopStepsBtn');
-    if (copyDesktopBtn) copyDesktopBtn.onclick = copyStepsToClipboard;
-
     var copyStepsBtn = document.getElementById('copyStepsBtn');
     if (copyStepsBtn) copyStepsBtn.onclick = copyStepsToClipboard;
 
